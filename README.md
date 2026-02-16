@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+[README.md](https://github.com/user-attachments/files/25348458/README.md)
+>>>>>>> d3b442b20a3070770c9b12967d081f6b48d7f4a4
 # 🦊 TrapSensor
 
 **TrapSensor** ist eine moderne IoT-Lösung zur Echtzeit-Überwachung von Fallenmeldern. Das System bietet eine robuste MQTT-Anbindung, detaillierte Status-Visualisierungen und Push-Benachrichtigungen direkt auf das Smartphone.
