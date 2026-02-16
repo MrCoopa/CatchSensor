@@ -32,20 +32,22 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                        <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                            <Battery size={14} className="mr-1" /> Spannung
+                {trap.lastReading && (
+                    <div className="grid grid-cols-2 gap-4 mb-8">
+                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                            <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
+                                <Battery size={14} className="mr-1" /> Spannung
+                            </div>
+                            <div className="text-lg font-bold text-gray-900">{trap.batteryVoltage || 3650} mV</div>
                         </div>
-                        <div className="text-lg font-bold text-gray-900">{trap.batteryVoltage || 3650} mV</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                        <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                            <Signal size={14} className="mr-1" /> Signal
+                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                            <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
+                                <Signal size={14} className="mr-1" /> Signal
+                            </div>
+                            <div className="text-lg font-bold text-gray-900">-{trap.signalStrength || 88} dBm</div>
                         </div>
-                        <div className="text-lg font-bold text-gray-900">-{trap.signalStrength || 88} dBm</div>
                     </div>
-                </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Verlauf</h4>

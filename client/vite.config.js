@@ -8,23 +8,34 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['vite.svg'],
       manifest: {
         name: 'TrapSensor Monitor',
         short_name: 'TrapSensor',
-        description: 'Echtzeit-Fallenüberwachungssystem',
-        theme_color: '#0f172a',
+        description: 'Professionelle Fallenüberwachung für Reviere',
+        theme_color: '#1b3a2e',
+        background_color: '#f9fafb',
+        display: 'standalone',
+        orientation: 'portrait',
         icons: [
           {
-            src: 'vite.svg',
+            src: 'icons/fox-logo.png',
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            src: 'vite.svg',
+            src: 'icons/fox-logo.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
+            purpose: 'any'
           },
+          {
+            src: 'icons/fox-logo.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
         ],
       },
     }),

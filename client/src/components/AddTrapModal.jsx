@@ -5,6 +5,7 @@ import QRScanner from './QRScanner';
 const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
     const [formData, setFormData] = useState({ name: '', location: '', imei: '' });
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [error, setError] = useState('');
 
     if (!isOpen) return null;
 
@@ -15,6 +16,7 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
         try {
             const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
             const token = localStorage.getItem('token');
@@ -31,9 +33,13 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
                 onAdd(newTrap);
                 setFormData({ name: '', location: '', imei: '' });
                 onClose();
+            } else {
+                const data = await response.json();
+                setError(data.error || 'Fehler beim Speichern');
             }
         } catch (error) {
             console.error('Fehler:', error);
+            setError('Verbindung zum Server fehlgeschlagen');
         }
     };
 
@@ -46,6 +52,12 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
                         <X size={24} />
                     </button>
                 </div>
+
+                {error && (
+                    <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl mb-6 text-sm font-bold">
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>

@@ -52,23 +52,25 @@ const TrapCard = ({ trap, onViewHistory }) => {
                 {config.label}
             </div>
 
-            <div className="flex items-center space-x-8 text-gray-500">
-                <div className="flex items-center space-x-2">
-                    <Battery size={16} className="text-gray-400" />
-                    <div className="text-sm font-medium">
-                        <p className="leading-none">{trap.batteryVoltage || 0} mV</p>
-                        <p className="text-[10px] text-gray-400 leading-none mt-0.5">{trap.batteryPercent || 0}%</p>
+            {trap.lastReading && (
+                <div className="flex items-center space-x-8 text-gray-500">
+                    <div className="flex items-center space-x-2">
+                        <Battery size={16} className="text-gray-400" />
+                        <div className="text-sm font-medium">
+                            <p className="leading-none">{trap.batteryVoltage || 0} mV</p>
+                            <p className="text-[10px] text-gray-400 leading-none mt-0.5">{trap.batteryPercent || 0}%</p>
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                    <Signal size={16} className="text-red-400" /> {/* Red signal icon as in template */}
-                    <div className="text-sm font-medium text-gray-400">
-                        <p className="leading-none">-{trap.signalStrength || 0}</p>
-                        <p className="text-[10px] uppercase leading-none mt-0.5">-{trap.signalStrength || 0} dBm</p>
+                    <div className="flex items-center space-x-2">
+                        <Signal size={16} className="text-red-400" /> {/* Red signal icon as in template */}
+                        <div className="text-sm font-medium text-gray-400">
+                            <p className="leading-none">-{trap.signalStrength || 0}</p>
+                            <p className="text-[10px] uppercase leading-none mt-0.5">-{trap.signalStrength || 0} dBm</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

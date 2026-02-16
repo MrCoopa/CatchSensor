@@ -33,11 +33,13 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
             <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md border border-gray-100">
                 <div className="text-center mb-8">
-                    <div className="bg-[#1b3a2e] w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <Lock className="text-white" size={32} />
-                    </div>
+                    <img
+                        src="/icons/fox-logo.png"
+                        alt="TrapSensor Logo"
+                        className="w-20 h-20 rounded-2xl mx-auto mb-4 shadow-lg border-2 border-[#1b3a2e]/10"
+                    />
                     <h1 className="text-2xl font-black text-gray-900 tracking-tight">TrapSensor Login</h1>
-                    <p className="text-gray-400 font-medium">Melden Sie sich an, um Ihre Fallen zu verwalten</p>
+                    <p className="text-gray-400 font-medium text-sm">Präzise Fallenüberwachung</p>
                 </div>
 
                 {error && (

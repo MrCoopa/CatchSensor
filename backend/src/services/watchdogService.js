@@ -3,6 +3,7 @@ const Trap = require('../models/Trap');
 const { Op } = require('sequelize');
 
 const setupWatchdog = (io) => {
+    console.log('Watchdog: Service initialized (Interval: Every 15 minutes)');
     // Run every 15 minutes
     cron.schedule('*/15 * * * *', async () => {
         console.log('Watchdog: Checking for offline traps...');

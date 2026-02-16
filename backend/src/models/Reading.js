@@ -32,7 +32,7 @@ const Reading = sequelize.define('Reading', {
     timestamps: false,
 });
 
-Trap.hasMany(Reading, { foreignKey: 'trapId' });
-Reading.belongsTo(Trap, { foreignKey: 'trapId' });
+Trap.hasMany(Reading, { foreignKey: 'trapId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Reading.belongsTo(Trap, { foreignKey: 'trapId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 module.exports = Reading;

@@ -13,30 +13,39 @@ const setupMQTT = (io) => {
         const client = mqtt.connect(broker.url);
 
         client.on('connect', () => {
-            console.log(`MQTT: Connected to ${broker.name}`);
-            client.subscribe('traps/+/data'); // NB-IoT
-            client.subscribe('v3/+/devices/+/up'); // TTN
+            console.log(`MQTT: ✅ Successfully connected to broker: ${broker.name} (${broker.url})`);
+            client.subscribe('traps/+/data', (err) => {
+                if (err) console.error(`MQTT: ❌ Failed to subscribe to NB-IoT: ${err}`);
+                else console.log('MQTT: Subscribed to traps/+/data (NB-IoT)');
+            });
+            client.subscribe('v3/+/devices/+/up', (err) => {
+                if (err) console.error(`MQTT: ❌ Failed to subscribe to TTN: ${err}`);
+                else console.log('MQTT: Subscribed to v3/+/devices/+/up (LoRaWAN)');
+            });
+        });
+
+        client.on('error', (err) => {
+            console.error(`MQTT: ❌ Error on broker ${broker.name}:`, err.message);
+        });
+
+        client.on('offline', () => {
+            console.warn(`MQTT: ⚠️ Broker ${broker.name} went offline.`);
         });
 
         client.on('message', async (topic, message) => {
             try {
-                let payload;
                 let deviceId;
 
                 // Simple Binary Parser (4-byte packet)
-                // Byte 0: Status (0x00 = Triggered, 0x01 = OK)
-                // Byte 1-2: Voltage (Hex to mV)
-                // Byte 3: Signal (RSSI)
-
                 if (message.length === 4) {
                     const status = message[0] === 0x00 ? 'triggered' : 'active';
                     const voltage = message.readUInt16BE(1);
                     const rssi = message[3]; // Raw absolute value
                     const batteryPercent = Math.min(100, Math.max(0, ((voltage - 3400) / (4200 - 3400)) * 100));
 
-                    // Identify device from topic or payload (simulation)
-                    // In real TTN, deviceId comes from the JSON wrapper, here we assume binary-only for NB-IoT
                     deviceId = topic.split('/')[1];
+
+                    console.log(`MQTT: Received data for Device [${deviceId}] -> Status: ${status}, V: ${voltage}mV, Signal: ${rssi}`);
 
                     await updateTrapData(deviceId, {
                         status,
@@ -46,9 +55,11 @@ const setupMQTT = (io) => {
                         value: voltage,
                         type: 'vibration'
                     }, io);
+                } else {
+                    console.log(`MQTT: Ignoring unknown packet format on topic [${topic}]. Length: ${message.length}`);
                 }
             } catch (err) {
-                console.error('MQTT Parsing Error:', err);
+                console.error(`MQTT: ❌ Processing Error on topic [${topic}]:`, err);
             }
         });
     });

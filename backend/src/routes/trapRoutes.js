@@ -16,6 +16,12 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { name, location, imei } = req.body;
+
+        // Basic validation
+        if (!name || !imei) {
+            return res.status(400).json({ error: 'Name und IMEI sind erforderlich' });
+        }
+
         const newTrap = await Trap.create({
             name,
             location,
@@ -24,6 +30,9 @@ router.post('/', async (req, res) => {
         });
         res.status(201).json(newTrap);
     } catch (error) {
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({ error: 'Diese IMEI ist bereits registriert' });
+        }
         res.status(500).json({ error: error.message });
     }
 });
@@ -39,6 +48,26 @@ router.patch('/:id/status', async (req, res) => {
         await trap.save();
         res.json(trap);
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete a trap
+router.delete('/:id', async (req, res) => {
+    try {
+        console.log(`Attempting to delete trap ${req.params.id} for user ${req.user.id}`);
+        const trap = await Trap.findOne({ where: { id: req.params.id, userId: req.user.id } });
+
+        if (!trap) {
+            console.log(`Trap ${req.params.id} not found for user ${req.user.id}`);
+            return res.status(404).json({ error: 'Trap not found or access denied' });
+        }
+
+        await trap.destroy();
+        console.log(`Trap ${req.params.id} deleted successfully`);
+        res.json({ message: 'Trap deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting trap:', error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -62,7 +62,14 @@ const Dashboard = ({ onLogout }) => {
             {/* Header matching template */}
             <header className="bg-[#1b3a2e] text-white pt-12 pb-4 px-6 sticky top-0 z-30 shadow-md">
                 <div className="flex items-center justify-between max-w-2xl mx-auto">
-                    <h1 className="text-xl font-bold tracking-tight">TrapSensor</h1>
+                    <div className="flex items-center space-x-3">
+                        <img
+                            src="/icons/fox-logo.png"
+                            alt="Logo"
+                            className="w-8 h-8 rounded-lg shadow-md border border-white/20"
+                        />
+                        <h1 className="text-xl font-black tracking-tight">TrapSensor</h1>
+                    </div>
                     <div className="flex items-center space-x-3">
                         <div className="bg-green-600/90 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                             Online
