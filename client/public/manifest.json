@@ -1,23 +1,23 @@
 {
-    "name": "TrapSensor Monitor",
+    "name": "TrapSensor Professional",
     "short_name": "TrapSensor",
-    "description": "Echtzeit-Fallenüberwachungssystem",
-    "theme_color": "#0f172a",
-    "background_color": "#0f172a",
+    "description": "Präzises Fallenüberwachungssystem",
+    "theme_color": "#1b3a2e",
+    "background_color": "#1b3a2e",
     "display": "standalone",
     "orientation": "portrait",
     "scope": "/",
     "start_url": "/",
     "icons": [
         {
-            "src": "/vite.svg",
+            "src": "/icons/fox-logo.png",
             "sizes": "192x192",
-            "type": "image/svg+xml"
+            "type": "image/png"
         },
         {
-            "src": "/vite.svg",
+            "src": "/icons/fox-logo.png",
             "sizes": "512x512",
-            "type": "image/svg+xml"
+            "type": "image/png"
         }
     ]
 }

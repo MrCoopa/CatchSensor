@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg'],
       manifest: {
-        name: 'TrapSensor Monitor',
+        name: 'TrapSensor Professional',
         short_name: 'TrapSensor',
         description: 'Professionelle Fallenüberwachung für Reviere',
         theme_color: '#1b3a2e',

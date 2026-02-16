@@ -45,7 +45,8 @@ app.use(cors({
 }));
 app.use(express.json());
 const path = require('path');
-app.use('/icons', express.static(path.join(__dirname, '../client/public/icons')));
+// Serve icons from local public folder
+app.use('/icons', express.static(path.join(__dirname, 'public/icons')));
 
 // Attach io to req for routes
 app.use((req, res, next) => {
@@ -53,34 +54,7 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get('/api/status', async (req, res) => {
-    try {
-        const trapCount = await Trap.count();
-        const readingCount = await Reading.count();
-        res.json({
-            status: 'online',
-            timestamp: new Date(),
-            server: {
-                uptime: process.uptime(),
-                memory: process.memoryUsage(),
-            },
-            services: {
-                database: 'connected',
-                mqtt: 'active',
-                watchdog: 'active'
-            },
-            stats: {
-                totalTraps: trapCount,
-                totalReadings: readingCount
-            },
-            visualDashboard: 'http://192.168.2.217:5000/status'
-        });
-    } catch (err) {
-        res.status(500).json({ status: 'error', message: err.message });
-    }
-});
-
-app.get('/status', (req, res) => {
+app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
         <html lang="de">
@@ -100,17 +74,17 @@ app.get('/status', (req, res) => {
                 <header class="flex items-start justify-between mb-12">
                     <div class="flex items-start space-x-6">
                         <img 
-                            src="/icons/fox-logo.png" 
+                            src="/icons/fox-logo.png?v=${Date.now()}" 
                             alt="Logo" 
-                            class="w-20 h-20 rounded-2xl shadow-xl border-2 border-[#1b3a2e]/10 object-contain"
+                            class="w-32 h-32 rounded-[2.5rem] shadow-2xl border-2 border-[#1b3a2e]/10 object-contain"
                         >
-                        <div class="pt-2">
+                        <div class="pt-3">
                             <h1 class="text-4xl font-black tracking-tight text-[#1b3a2e]">System Status</h1>
                             <p class="text-slate-400 font-medium text-sm">Live-Monitoring & Health-Check</p>
                         </div>
                     </div>
-                    <div class="hidden sm:block pt-2">
-                        <span class="bg-green-100 text-green-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">System Online</span>
+                    <div class="hidden sm:block pt-3">
+                        <span class="bg-green-100 text-green-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm">Server Online</span>
                     </div>
                 </header>
 
@@ -203,6 +177,34 @@ app.get('/status', (req, res) => {
         </html>
     `);
 });
+
+app.get('/api/status', async (req, res) => {
+    try {
+        const trapCount = await Trap.count();
+        const readingCount = await Reading.count();
+        res.json({
+            status: 'online',
+            timestamp: new Date(),
+            server: {
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+            },
+            services: {
+                database: 'connected',
+                mqtt: 'active',
+                watchdog: 'active'
+            },
+            stats: {
+                totalTraps: trapCount,
+                totalReadings: readingCount
+            },
+            visualDashboard: 'http://192.168.2.217:5000/'
+        });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+});
+
 
 // Routes
 app.use('/api/auth', authRoutes);

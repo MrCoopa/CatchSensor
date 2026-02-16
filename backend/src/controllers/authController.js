@@ -54,6 +54,24 @@ const loginUser = async (req, res) => {
     }
 };
 
+const changePassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+
+    try {
+        const user = await User.findByPk(req.user.id);
+
+        if (user && (await user.comparePassword(currentPassword))) {
+            user.password = newPassword;
+            await user.save();
+            res.json({ message: 'Password updated successfully' });
+        } else {
+            res.status(401).json({ message: 'Invalid current password' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error during password change' });
+    }
+};
+
 const getMe = async (req, res) => {
     const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ['password'] }
@@ -69,4 +87,5 @@ module.exports = {
     registerUser,
     loginUser,
     getMe,
+    changePassword,
 };

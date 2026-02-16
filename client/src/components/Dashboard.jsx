@@ -65,21 +65,15 @@ const Dashboard = ({ onLogout }) => {
                     <div className="flex items-center space-x-3">
                         <img
                             src="/icons/fox-logo.png"
-                            alt="Logo"
-                            className="w-8 h-8 rounded-lg shadow-md border border-white/20"
+                            alt="TrapSensor Logo"
+                            className="w-20 h-20 rounded-3xl shadow-xl border border-white/20 object-contain bg-white/5"
                         />
-                        <h1 className="text-xl font-black tracking-tight">TrapSensor</h1>
+                        <h1 className="text-2xl font-black tracking-tight">TrapSensor</h1>
                     </div>
                     <div className="flex items-center space-x-3">
                         <div className="bg-green-600/90 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                             Online
                         </div>
-                        <button
-                            onClick={onLogout}
-                            className="text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-white transition-colors border border-white/20 px-2 py-0.5 rounded-md"
-                        >
-                            Logout
-                        </button>
                     </div>
                 </div>
             </header>
