@@ -16,7 +16,7 @@ const TrapCard = ({ trap, onViewHistory }) => {
             border: 'border-l-[6px] border-l-green-600',
             bg: 'bg-green-50/50',
             text: 'text-green-600',
-            label: 'BEREIT / SCHARF',
+            label: 'AKTIV',
             timeColor: 'text-gray-400'
         },
         inactive: {

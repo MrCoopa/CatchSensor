@@ -38,7 +38,7 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                     <div className="grid grid-cols-2 gap-4 mb-8">
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <BatteryIndicator percentage={trap.batteryPercent || 0} className="mr-2" /> Spannung
+                                <BatteryIndicator percentage={trap.batteryPercent || 0} className="mr-2" /> Batterie
                             </div>
                             <div className="text-lg font-bold text-gray-900">{((trap.batteryVoltage || 0) / 1000).toFixed(1).replace('.', ',')} V</div>
                         </div>
@@ -58,7 +58,7 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                             <div key={reading.id} className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100/50">
                                 <div className="flex justify-between items-center mb-4">
                                     <p className={`font-black text-xs tracking-widest uppercase ${reading.status === 'triggered' ? 'text-red-600' : 'text-green-600'}`}>
-                                        {reading.status === 'triggered' ? '⚡ FANG!' : '✔️ BEREIT'}
+                                        {reading.status === 'triggered' ? '⚡ FANG!' : '✔️ AKTIV'}
                                     </p>
                                     <p className="text-[10px] text-gray-400 font-medium">
                                         {new Date(reading.timestamp).toLocaleString('de-DE')}
