@@ -35,6 +35,10 @@ const Trap = sequelize.define('Trap', {
         type: DataTypes.INTEGER, // 0-4 bars
         defaultValue: 4,
     },
+    rssi: {
+        type: DataTypes.INTEGER, // Absolute value (e.g., 95 for -95dBm)
+        allowNull: true,
+    },
     batteryThreshold: {
         type: DataTypes.INTEGER,
         defaultValue: 3400, // Defaul-Warnung bei 3.4V

@@ -4,11 +4,22 @@ import { Mail, Lock, ArrowRight, UserPlus } from 'lucide-react';
 const Register = ({ onRegister, onSwitchToLogin }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (password !== confirmPassword) {
+            setError('Die Passwörter stimmen nicht überein');
+            return;
+        }
+
+        if (password.length < 6) {
+            setError('Das Passwort muss mindestens 6 Zeichen lang sein');
+            return;
+        }
         try {
             const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
             const response = await fetch(`${baseUrl}/api/auth/register`, {
@@ -77,6 +88,21 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-4 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none transition-all"
                                 placeholder="Mindestens 6 Zeichen"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Passwort bestätigen</label>
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                required
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-4 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none transition-all"
+                                placeholder="Passwort wiederholen"
                             />
                         </div>
                     </div>

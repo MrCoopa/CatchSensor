@@ -58,16 +58,20 @@ const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     try {
+        console.log(`Password change attempt for user ID: ${req.user.id}`);
         const user = await User.findByPk(req.user.id);
 
         if (user && (await user.comparePassword(currentPassword))) {
             user.password = newPassword;
             await user.save();
+            console.log('Password updated successfully');
             res.json({ message: 'Password updated successfully' });
         } else {
+            console.log('Password change failed: Invalid current password');
             res.status(401).json({ message: 'Invalid current password' });
         }
     } catch (error) {
+        console.error('Password change error:', error);
         res.status(500).json({ message: 'Server error during password change' });
     }
 };

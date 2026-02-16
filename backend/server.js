@@ -22,7 +22,7 @@ const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, {
     cors: {
-        origin: "http://localhost:5173",
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
@@ -38,12 +38,14 @@ try {
     console.error('CRITICAL: Service initialization failed:', err);
 }
 
-app.use(cors({
-    origin: '*', // Allow all origins for easier network access during development
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors()); // Simplest CORS for troubleshooting
 app.use(express.json());
+
+// Request Logger
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
 const path = require('path');
 // Serve icons from local public folder
 app.use('/icons', express.static(path.join(__dirname, 'public/icons')));
@@ -229,11 +231,11 @@ async function startServer() {
         console.log('Database models synced.');
 
         const PORT = process.env.PORT || 5000;
-        server.listen(PORT, () => {
+        server.listen(PORT, '0.0.0.0', () => {
             console.log('--- Server Status ---');
             console.log(`Server: Running on port ${PORT}`);
             console.log(`Mode: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`API URL: http://localhost:${PORT}`);
+            console.log(`API URL: http://0.0.0.0:${PORT}`);
             console.log('-----------------------');
         });
     } catch (error) {

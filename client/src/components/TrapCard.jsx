@@ -1,4 +1,5 @@
 import { Battery, Signal } from 'lucide-react';
+import BatteryIndicator from './BatteryIndicator';
 
 const formatTimeAgo = (date) => {
     const diff = Math.floor((new Date() - new Date(date)) / 1000 / 60);
@@ -41,12 +42,15 @@ const TrapCard = ({ trap, onViewHistory }) => {
             onClick={() => onViewHistory(trap)}
             className={`relative cursor-pointer bg-white rounded-2xl shadow-sm p-5 border-y border-r border-gray-100 transition-all active:scale-[0.98] ${config.border} ${config.bg} ${config.animate || ''}`}
         >
-            <div className="flex justify-between items-start mb-2">
+            <div className="flex justify-between items-start mb-0.5">
                 <h3 className="text-xl font-bold text-gray-900 tracking-tight">{trap.name}</h3>
                 <span className={`text-xs font-medium ${config.timeColor}`}>
                     {trap.lastReading ? formatTimeAgo(trap.lastReading) : 'Nie'}
                 </span>
             </div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                {trap.location || 'Kein Standort hinterlegt'}
+            </p>
 
             <div className={`text-sm font-black tracking-wider mb-6 ${config.text}`}>
                 {config.label}
@@ -55,18 +59,25 @@ const TrapCard = ({ trap, onViewHistory }) => {
             {trap.lastReading && (
                 <div className="flex items-center space-x-8 text-gray-500">
                     <div className="flex items-center space-x-2">
-                        <Battery size={16} className="text-gray-400" />
+                        <BatteryIndicator percentage={trap.batteryPercent || 0} />
                         <div className="text-sm font-medium">
-                            <p className="leading-none">{trap.batteryVoltage || 0} mV</p>
+                            <p className="leading-none">{((trap.batteryVoltage || 0) / 1000).toFixed(1).replace('.', ',')} V</p>
                             <p className="text-[10px] text-gray-400 leading-none mt-0.5">{trap.batteryPercent || 0}%</p>
                         </div>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        <Signal size={16} className="text-red-400" /> {/* Red signal icon as in template */}
-                        <div className="text-sm font-medium text-gray-400">
-                            <p className="leading-none">-{trap.signalStrength || 0}</p>
-                            <p className="text-[10px] uppercase leading-none mt-0.5">-{trap.signalStrength || 0} dBm</p>
+                        <div className="flex items-end space-x-0.5 h-4 mb-0.5">
+                            {[1, 2, 3, 4].map((bar) => (
+                                <div
+                                    key={bar}
+                                    className={`w-1 rounded-t-sm ${bar <= (trap.signalStrength || 0) ? 'bg-green-600' : 'bg-gray-200'}`}
+                                    style={{ height: `${bar * 25}%` }}
+                                />
+                            ))}
+                        </div>
+                        <div className="text-sm font-medium text-gray-500">
+                            <p className="leading-none mt-1">-{trap.rssi || 0} dBm</p>
                         </div>
                     </div>
                 </div>

@@ -22,7 +22,19 @@ const Reading = sequelize.define('Reading', {
     },
     type: {
         type: DataTypes.STRING,
-        allowNull: false, // e.g., 'light', 'vibration', 'temperature'
+        allowNull: false, // e.g., 'vibration', 'status'
+    },
+    status: {
+        type: DataTypes.STRING, // 'active', 'triggered'
+        allowNull: true,
+    },
+    batteryPercent: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
+    rssi: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
     },
     timestamp: {
         type: DataTypes.DATE,

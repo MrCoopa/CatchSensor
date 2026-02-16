@@ -11,6 +11,8 @@ const setupMQTT = (io) => {
 
     brokers.forEach(broker => {
         const client = mqtt.connect(broker.url);
+        let lastErrorLog = 0;
+        const LOG_THROTTLE = 30000; // 30 seconds
 
         client.on('connect', () => {
             console.log(`MQTT: ✅ Successfully connected to broker: ${broker.name} (${broker.url})`);
@@ -25,11 +27,19 @@ const setupMQTT = (io) => {
         });
 
         client.on('error', (err) => {
-            console.error(`MQTT: ❌ Error on broker ${broker.name}:`, err.message);
+            const now = Date.now();
+            if (now - lastErrorLog > LOG_THROTTLE) {
+                console.error(`MQTT: ❌ Error on broker ${broker.name}:`, err.message);
+                lastErrorLog = now;
+            }
         });
 
         client.on('offline', () => {
-            console.warn(`MQTT: ⚠️ Broker ${broker.name} went offline.`);
+            const now = Date.now();
+            if (now - lastErrorLog > LOG_THROTTLE) {
+                console.warn(`MQTT: ⚠️ Broker ${broker.name} went offline.`);
+                lastErrorLog = now;
+            }
         });
 
         client.on('message', async (topic, message) => {
@@ -41,7 +51,8 @@ const setupMQTT = (io) => {
                     const status = message[0] === 0x00 ? 'triggered' : 'active';
                     const voltage = message.readUInt16BE(1);
                     const rssi = message[3]; // Raw absolute value
-                    const batteryPercent = Math.min(100, Math.max(0, ((voltage - 3400) / (4200 - 3400)) * 100));
+                    // Battery Calibration: 4.2V = 100%, 3.2V = 0%
+                    const batteryPercent = Math.min(100, Math.max(0, ((voltage - 3200) / (4200 - 3200)) * 100));
 
                     deviceId = topic.split('/')[1];
 
@@ -52,6 +63,7 @@ const setupMQTT = (io) => {
                         batteryVoltage: voltage,
                         batteryPercent: Math.round(batteryPercent),
                         signalStrength: normalizeRSSI(rssi),
+                        rssi: Math.abs(rssi),
                         value: voltage,
                         type: 'vibration'
                     }, io);
@@ -66,13 +78,13 @@ const setupMQTT = (io) => {
 };
 
 const normalizeRSSI = (rssi) => {
-    // 0-4 bars normalization (RSSI ist jetzt negativ, z.B. -40 bis -120)
+    // 0-4 bars normalization based on user defined thresholds
     const absRSSI = Math.abs(rssi);
-    if (absRSSI < 60) return 4;
-    if (absRSSI < 80) return 3;
-    if (absRSSI < 100) return 2;
-    if (absRSSI < 115) return 1;
-    return 0;
+    if (absRSSI <= 75) return 4;    // -50 bis -75 (Exzellent/Gut)
+    if (absRSSI <= 90) return 3;    // -76 bis -90 (Mittelmäßig)
+    if (absRSSI <= 100) return 2;   // -91 bis -100 (Genügend/Schwach)
+    if (absRSSI <= 110) return 1;   // -101 bis -110 (Schlecht)
+    return 0;                       // Ab -110 (Sehr schlecht)
 };
 
 const updateTrapData = async (deviceId, data, io) => {
@@ -84,13 +96,17 @@ const updateTrapData = async (deviceId, data, io) => {
         batteryVoltage: data.batteryVoltage,
         batteryPercent: data.batteryPercent,
         signalStrength: data.signalStrength,
+        rssi: data.rssi, // Store raw absolute value
         lastReading: new Date()
     });
 
     await Reading.create({
         trapId: trap.id,
         value: data.value,
-        type: data.type
+        type: data.type,
+        status: data.status,
+        batteryPercent: data.batteryPercent,
+        rssi: data.rssi
     });
 
     // Real-time broadcast

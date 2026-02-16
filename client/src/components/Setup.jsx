@@ -4,6 +4,7 @@ import { User, Shield, Info, Trash2, LogOut, ChevronRight, Settings } from 'luci
 const Setup = ({ onLogout }) => {
     const [traps, setTraps] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState(null);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
@@ -11,26 +12,36 @@ const Setup = ({ onLogout }) => {
         confirmPassword: ''
     });
     const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
-    const userEmail = localStorage.getItem('userEmail');
 
-    const fetchTraps = async () => {
+    const fetchData = async () => {
+        setLoading(true);
         try {
             const token = localStorage.getItem('token');
             const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
-            const response = await fetch(`${baseUrl}/api/traps`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
-            setTraps(data);
+
+            // Parallel fetch for user profile and traps list
+            const [userRes, trapsRes] = await Promise.all([
+                fetch(`${baseUrl}/api/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${baseUrl}/api/traps`, { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
+
+            if (userRes.status === 401 || trapsRes.status === 401) {
+                onLogout();
+                return;
+            }
+
+            if (userRes.ok) setCurrentUser(await userRes.json());
+            if (trapsRes.ok) setTraps(await trapsRes.json());
+
         } catch (error) {
-            console.error('Fehler beim Abrufen der Fallen:', error);
+            console.error('Fehler beim Abrufen der Daten:', error);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchTraps();
+        fetchData();
     }, []);
 
     const handleDeleteTrap = async (id, name) => {
@@ -73,7 +84,7 @@ const Setup = ({ onLogout }) => {
             const token = localStorage.getItem('token');
             const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
             const response = await fetch(`${baseUrl}/api/auth/change-password`, {
-                method: 'PUT',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -97,7 +108,23 @@ const Setup = ({ onLogout }) => {
                 setStatusMessage({ text: data.message || 'Fehler beim Ändern des Passworts.', type: 'error' });
             }
         } catch (error) {
-            setStatusMessage({ text: 'Verbindungsfehler zum Server.', type: 'error' });
+            console.error('Password change error:', error);
+            setStatusMessage({ text: 'Verbindungsfehler zum Server. Prüfen Sie die Internetverbindung.', type: 'error' });
+        }
+    };
+
+    const testConnection = async () => {
+        setStatusMessage({ text: 'Teste Verbindung...', type: '' });
+        try {
+            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
+            const response = await fetch(`${baseUrl}/api/status`);
+            if (response.ok) {
+                setStatusMessage({ text: 'Verbindung zum Server erfolgreich! ✅', type: 'success' });
+            } else {
+                setStatusMessage({ text: `Server antwortet mit Fehler ${response.status}`, type: 'error' });
+            }
+        } catch (error) {
+            setStatusMessage({ text: 'Server nicht erreichbar! ❌ Prüfen Sie die IP-Adresse.', type: 'error' });
         }
     };
 
@@ -161,6 +188,14 @@ const Setup = ({ onLogout }) => {
                             >
                                 Passwort jetzt aktualisieren
                             </button>
+
+                            <button
+                                type="button"
+                                onClick={testConnection}
+                                className="w-full bg-gray-100 text-gray-500 font-bold py-2 rounded-xl text-xs uppercase tracking-widest mt-2 hover:bg-gray-200 transition-all"
+                            >
+                                Verbindung zum Server testen
+                            </button>
                         </form>
                     </div>
                 </main>
@@ -198,7 +233,7 @@ const Setup = ({ onLogout }) => {
                                     <User size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-gray-900">{userEmail}</p>
+                                    <p className="text-sm font-bold text-gray-900">{currentUser?.email || 'Lädt...'}</p>
                                     <p className="text-[10px] text-gray-400 font-medium">Aktiver Benutzer</p>
                                 </div>
                             </div>

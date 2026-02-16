@@ -19,8 +19,16 @@ const Dashboard = ({ onLogout }) => {
             const response = await fetch(`${baseUrl}/api/traps`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+
+            if (response.status === 401) {
+                onLogout();
+                return;
+            }
+
             const data = await response.json();
-            setTraps(data);
+            if (Array.isArray(data)) {
+                setTraps(data);
+            }
         } catch (error) {
             console.error('Fehler beim Abrufen der Fallen:', error);
         } finally {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Battery, Signal } from 'lucide-react';
+import BatteryIndicator from './BatteryIndicator';
 
 const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
     const [readings, setReadings] = useState([]);
@@ -36,32 +37,65 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                     <div className="grid grid-cols-2 gap-4 mb-8">
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <Battery size={14} className="mr-1" /> Spannung
+                                <BatteryIndicator percentage={trap.batteryPercent || 0} className="mr-2" /> Spannung
                             </div>
-                            <div className="text-lg font-bold text-gray-900">{trap.batteryVoltage || 3650} mV</div>
+                            <div className="text-lg font-bold text-gray-900">{((trap.batteryVoltage || 0) / 1000).toFixed(1).replace('.', ',')} V</div>
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <Signal size={14} className="mr-1" /> Signal
+                                <div className="flex items-end space-x-0.5 h-3 mr-2 mb-0.5">
+                                    {[1, 2, 3, 4].map((bar) => (
+                                        <div
+                                            key={bar}
+                                            className={`w-0.5 rounded-t-sm ${bar <= (trap.signalStrength || 0) ? 'bg-green-600' : 'bg-gray-200'}`}
+                                            style={{ height: `${bar * 25}%` }}
+                                        />
+                                    ))}
+                                </div>
+                                Signal
                             </div>
-                            <div className="text-lg font-bold text-gray-900">-{trap.signalStrength || 88} dBm</div>
+                            <div className="text-lg font-bold text-gray-900">-{trap.rssi || 0} dBm</div>
                         </div>
                     </div>
                 )}
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Verlauf</h4>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         {readings.map((reading) => (
-                            <div key={reading.id} className="flex items-center justify-between py-3 border-b border-gray-50">
-                                <div>
-                                    <p className="text-gray-900 font-bold text-sm">{reading.type === 'vibration' ? 'Ereignis' : reading.type}</p>
+                            <div key={reading.id} className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100/50">
+                                <div className="flex justify-between items-center mb-4">
+                                    <p className={`font-black text-xs tracking-widest uppercase ${reading.status === 'triggered' ? 'text-red-600' : 'text-green-600'}`}>
+                                        {reading.status === 'triggered' ? '⚡ FANG!' : '✔️ BEREIT'}
+                                    </p>
                                     <p className="text-[10px] text-gray-400 font-medium">
                                         {new Date(reading.timestamp).toLocaleString('de-DE')}
                                     </p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-gray-900">{reading.value} mV</p>
+
+                                <div className="flex items-center space-x-8">
+                                    {/* Batterie */}
+                                    <div className="flex items-center space-x-2">
+                                        <BatteryIndicator percentage={reading.batteryPercent || 0} />
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-black text-gray-700 leading-none">{reading.batteryPercent || 0}%</span>
+                                            <span className="text-[9px] text-gray-400 font-medium">{((reading.value || 0) / 1000).toFixed(1).replace('.', ',')} V</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Signal */}
+                                    <div className="flex items-center space-x-2 border-l border-gray-200 pl-6">
+                                        <div className="flex items-end space-x-0.5 h-3 mb-0.5">
+                                            {[1, 2, 3, 4].map((bar) => (
+                                                <div
+                                                    key={bar}
+                                                    className={`w-0.5 rounded-t-sm ${bar <= (reading.rssi <= 75 ? 4 : reading.rssi <= 90 ? 3 : reading.rssi <= 100 ? 2 : reading.rssi <= 110 ? 1 : 0) ? 'bg-green-600' : 'bg-gray-200'}`}
+                                                    style={{ height: `${bar * 25}%` }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <span className="text-[11px] font-black text-gray-500 leading-none">-{reading.rssi || 0} dBm</span>
+                                    </div>
                                 </div>
                             </div>
                         ))}

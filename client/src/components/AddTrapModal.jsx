@@ -67,8 +67,19 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none transition-all"
                             placeholder="z.B. Wiesenkante Süd"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Standort (optional)</label>
+                        <input
+                            type="text"
+                            value={formData.location}
+                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none transition-all"
+                            placeholder="z.B. Obere Dickung / Bachlauf"
                         />
                     </div>
 
