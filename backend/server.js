@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const sequelize = require('./src/config/database');
@@ -10,22 +11,55 @@ const Reading = require('./src/models/Reading');
 // Import routes
 const trapRoutes = require('./src/routes/trapRoutes');
 const readingRoutes = require('./src/routes/readingRoutes');
+const authRoutes = require('./src/routes/authRoutes');
+const { protect } = require('./src/middleware/authMiddleware');
+const { setupMQTT } = require('./src/services/mqttService');
+const { setupWatchdog } = require('./src/services/watchdogService');
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
+const io = require('socket.io')(server, {
+    cors: {
+        origin: "http://localhost:5173",
+        methods: ["GET", "POST"]
+    }
+});
 
-app.use(cors());
+// Start Background Services
+setupMQTT(io);
+setupWatchdog(io);
+
+app.use(cors({
+    origin: '*', // Allow all origins for easier network access during development
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
+
+// Attach io to req for routes
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 
 app.get('/', (req, res) => {
     res.send('TrapSensor Backend is running!');
 });
 
 // Routes
-app.use('/api/traps', trapRoutes);
-app.use('/api/readings', readingRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/traps', protect, trapRoutes);
+app.use('/api/readings', protect, readingRoutes);
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+});
 
 // Sync database and start server
 async function startServer() {
@@ -33,11 +67,11 @@ async function startServer() {
         await sequelize.authenticate();
         console.log('Database connection established.');
 
-        // Sync models (force: false in production!)
         await sequelize.sync({ alter: true });
         console.log('Database models synced.');
 
-        app.listen(PORT, () => {
+        const PORT = process.env.PORT || 5000;
+        server.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });
     } catch (error) {

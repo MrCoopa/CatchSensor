@@ -1,35 +1,70 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
+import Login from './components/Login';
+import Register from './components/Register';
+import { Home, Plus, Settings } from 'lucide-react';
 
 function App() {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center">
-              <span className="text-2xl font-bold text-blue-600 tracking-tight">
-                TrapSensor
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                Admin-Konsole
-              </span>
-            </div>
-          </div>
-        </div>
-      </nav>
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard'
 
-      <main>
-        <Dashboard />
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const email = localStorage.getItem('userEmail');
+    if (token && email) {
+      setUser({ token, email });
+      setView('dashboard');
+    }
+  }, []);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    setView('dashboard');
+  };
+
+  const handleRegister = (userData) => {
+    setUser(userData);
+    setView('dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    setUser(null);
+    setView('login');
+  };
+
+  if (view === 'login') return <Login onLogin={handleLogin} onSwitchToRegister={() => setView('register')} />;
+  if (view === 'register') return <Register onRegister={handleRegister} onSwitchToLogin={() => setView('login')} />;
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+      <main className="flex-1">
+        <Dashboard onLogout={handleLogout} />
       </main>
 
-      <footer className="bg-white mt-auto py-6 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} TrapSensor Projekt. Alle Rechte vorbehalten.
+      {/* Bottom Navigation matching template */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 z-40">
+        <div className="max-w-2xl mx-auto flex justify-between items-center text-gray-400">
+          <button className="flex flex-col items-center space-y-1 text-green-700">
+            <Home size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Fallen</span>
+          </button>
+
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-add-trap'))}
+            className="flex flex-col items-center space-y-1 hover:text-green-700 transition-colors"
+          >
+            <Plus size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Neu</span>
+          </button>
+
+          <button className="flex flex-col items-center space-y-1 hover:text-green-700 transition-colors">
+            <Settings size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Setup</span>
+          </button>
         </div>
-      </footer>
+      </nav>
     </div>
   );
 }

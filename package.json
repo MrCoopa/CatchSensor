@@ -19,10 +19,16 @@
   },
   "homepage": "https://github.com/MrCoopa/TrapSensor#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mariadb": "^3.4.5",
-    "sequelize": "^6.37.7"
+    "mqtt": "^5.15.0",
+    "node-cron": "^4.2.1",
+    "sequelize": "^6.37.7",
+    "socket.io": "^4.8.3",
+    "web-push": "^3.6.7"
   }
 }

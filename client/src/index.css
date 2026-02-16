@@ -2,10 +2,32 @@
 
 @layer base {
   body {
-    background-color: #f9fafb !important;
-    /* bg-gray-50 */
-    color: #111827 !important;
-    /* text-gray-900 */
-    color-scheme: light !important;
+    background-color: #f3f4f6 !important;
+    /* bg-gray-100 */
+    color: #1f2937 !important;
+    /* bg-gray-800 */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-red {
+    animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-red {
+
+    0%,
+    100% {
+      opacity: 1;
+      background-color: rgb(254, 226, 226);
+      /* bg-red-100 */
+    }
+
+    50% {
+      opacity: .7;
+      background-color: rgb(254, 202, 202);
+      /* bg-red-200 */
+    }
   }
 }
