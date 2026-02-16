@@ -56,6 +56,7 @@ const Trap = sequelize.define('Trap', {
         allowNull: true, // Allow null for existing traps or MQTT ingest
     }
 }, {
+    tableName: 'TrapSensors',
     timestamps: true,
 });
 

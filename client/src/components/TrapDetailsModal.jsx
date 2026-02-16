@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Battery, Signal } from 'lucide-react';
 import BatteryIndicator from './BatteryIndicator';
+import SignalIndicator from './SignalIndicator';
 
 const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
     const [readings, setReadings] = useState([]);
@@ -43,16 +44,7 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <div className="flex items-end space-x-0.5 h-3 mr-2 mb-0.5">
-                                    {[1, 2, 3, 4].map((bar) => (
-                                        <div
-                                            key={bar}
-                                            className={`w-0.5 rounded-t-sm ${bar <= (trap.signalStrength || 0) ? 'bg-green-600' : 'bg-gray-200'}`}
-                                            style={{ height: `${bar * 25}%` }}
-                                        />
-                                    ))}
-                                </div>
-                                Signal
+                                <SignalIndicator rssi={trap.rssi} className="mr-2" /> Signal
                             </div>
                             <div className="text-lg font-bold text-gray-900">-{trap.rssi || 0} dBm</div>
                         </div>
@@ -85,15 +77,7 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
 
                                     {/* Signal */}
                                     <div className="flex items-center space-x-2 border-l border-gray-200 pl-6">
-                                        <div className="flex items-end space-x-0.5 h-3 mb-0.5">
-                                            {[1, 2, 3, 4].map((bar) => (
-                                                <div
-                                                    key={bar}
-                                                    className={`w-0.5 rounded-t-sm ${bar <= (reading.rssi <= 75 ? 4 : reading.rssi <= 90 ? 3 : reading.rssi <= 100 ? 2 : reading.rssi <= 110 ? 1 : 0) ? 'bg-green-600' : 'bg-gray-200'}`}
-                                                    style={{ height: `${bar * 25}%` }}
-                                                />
-                                            ))}
-                                        </div>
+                                        <SignalIndicator rssi={reading.rssi} />
                                         <span className="text-[11px] font-black text-gray-500 leading-none">-{reading.rssi || 0} dBm</span>
                                     </div>
                                 </div>

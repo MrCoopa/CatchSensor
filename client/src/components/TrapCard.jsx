@@ -1,5 +1,6 @@
 import { Battery, Signal } from 'lucide-react';
 import BatteryIndicator from './BatteryIndicator';
+import SignalIndicator from './SignalIndicator';
 
 const formatTimeAgo = (date) => {
     const diff = Math.floor((new Date() - new Date(date)) / 1000 / 60);
@@ -67,15 +68,7 @@ const TrapCard = ({ trap, onViewHistory }) => {
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        <div className="flex items-end space-x-0.5 h-4 mb-0.5">
-                            {[1, 2, 3, 4].map((bar) => (
-                                <div
-                                    key={bar}
-                                    className={`w-1 rounded-t-sm ${bar <= (trap.signalStrength || 0) ? 'bg-green-600' : 'bg-gray-200'}`}
-                                    style={{ height: `${bar * 25}%` }}
-                                />
-                            ))}
-                        </div>
+                        <SignalIndicator rssi={trap.rssi} barWidth="w-1" barHeight="h-4" className="mb-0.5" />
                         <div className="text-sm font-medium text-gray-500">
                             <p className="leading-none mt-1">-{trap.rssi || 0} dBm</p>
                         </div>
