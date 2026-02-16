@@ -28,16 +28,12 @@ const { protect } = require('./src/middleware/authMiddleware');
 const { setupMQTT } = require('./src/services/mqttService');
 const { setupWatchdog } = require('./src/services/watchdogService');
 
-dotenv.config();
-
-const https = require('https'); // Changed from http
-const fs = require('fs'); // Added fs
-
-// ... imports ...
-
-dotenv.config();
-
 const app = express();
+const https = require('https');
+const fs = require('fs');
+
+dotenv.config();
+
 // Load SSL Certs
 let server;
 try {
@@ -68,9 +64,21 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION:', reason);
 });
 
+// Embedded MQTT Broker (Aedes)
+const aedes = require('aedes')();
+const { createServer } = require('aedes-server-factory');
+const setupEmbeddedBroker = () => {
+    const mqttServer = createServer(aedes);
+    mqttServer.listen(1883, '0.0.0.0', () => {
+        console.log('✅ Embedded MQTT Broker running on port 1883');
+    });
+    return aedes;
+};
+
 // Start Background Services
 console.log('--- Services Initialization ---');
 try {
+    setupEmbeddedBroker(); // Start Broker
     setupMQTT(io);
     console.log('Services: MQTT setup initiated.');
     setupWatchdog(io);

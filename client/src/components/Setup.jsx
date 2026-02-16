@@ -15,24 +15,22 @@ const Setup = ({ onLogout }) => {
     const [swStatus, setSwStatus] = useState('Prüfe...');
 
     useEffect(() => {
-        const checkSW = () => {
+        const checkSW = async () => {
             if ('serviceWorker' in navigator) {
-                // Check for load error from main.jsx
+                // detailed logging
+                const regs = await navigator.serviceWorker.getRegistrations();
+                let debugText = `Regs: ${regs.length}`;
+
                 if (window.swError) {
-                    setSwStatus(`Fehler: ${window.swError.message || 'Installation fehlgeschlagen'}`);
+                    setSwStatus(`Fehler: ${window.swError.message}`);
                     return;
                 }
 
-                // Check immediate state
                 if (navigator.serviceWorker.controller) {
-                    setSwStatus('Aktiv ✅ (App bereit)');
+                    setSwStatus('Aktiv ✅ (Ready)');
                 } else {
-                    navigator.serviceWorker.ready.then(() => {
-                        setSwStatus('Aktiv ✅ (App bereit)');
-                    }).catch((e) => {
-                        console.error('SW Ready Error:', e);
-                        setSwStatus('Inaktiv ⚠️ (Browser-Schutz?)');
-                    });
+                    setSwStatus(`Inaktiv ⚠️ (${debugText})`);
+                    // Try to register manually if missing?
                 }
             } else {
                 setSwStatus('Nicht unterstützt ❌');
@@ -314,13 +312,7 @@ const Setup = ({ onLogout }) => {
                                 Passwort jetzt aktualisieren
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={testConnection}
-                                className="w-full bg-gray-100 text-gray-500 font-bold py-2 rounded-xl text-xs uppercase tracking-widest mt-2 hover:bg-gray-200 transition-all"
-                            >
-                                Verbindung zum Server testen
-                            </button>
+
                         </form>
                     </div>
                 </main>
@@ -348,6 +340,27 @@ const Setup = ({ onLogout }) => {
             </header>
 
             <main className="max-w-2xl mx-auto w-full px-6 pt-6 space-y-8">
+                {/* Push Notifications Section */}
+                <section>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Benachrichtigungen</label>
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
+                            <div className="flex items-center space-x-4">
+                                <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                    <Shield size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
+                                </div>
+                            </div>
+                            <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
+                                <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Account Section */}
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Konto & Profil</label>
@@ -457,6 +470,13 @@ const Setup = ({ onLogout }) => {
                     </div>
                 </section>
 
+                {/* Status Message Container */}
+                {statusMessage.text && !isChangingPassword && (
+                    <div className={`mx-6 p-4 rounded-2xl text-sm font-bold ${statusMessage.type === 'success' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                        {statusMessage.text}
+                    </div>
+                )}
+
                 {/* Info Section */}
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Informationen</label>
@@ -483,28 +503,24 @@ const Setup = ({ onLogout }) => {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </section>
-                {/* Push Notifications Section */}
-                <section>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Benachrichtigungen</label>
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
+                        <div
+                            onClick={testConnection}
+                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
                             <div className="flex items-center space-x-4">
-                                <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                <div className="bg-blue-50 p-2.5 rounded-2xl text-blue-600">
                                     <Shield size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
+                                    <p className="text-sm font-bold text-gray-900">Server-Verbindung</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Klicken zum Testen</p>
                                 </div>
                             </div>
-                            <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
-                                <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </div>
+                            <ChevronRight size={18} className="text-gray-300" />
                         </div>
                     </div>
                 </section>
+
             </main>
         </div>
     );

@@ -1,17 +1,22 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-import basicSsl from '@vitejs/plugin-basic-ssl'
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// https://vite.dev/config/
+// ...
+
 export default defineConfig({
   server: {
-    host: true, // Exposes to network
-    https: true, // Enables HTTPS
+    host: true,
+    https: false, // Switch to HTTP for mobile compatibility
     proxy: {
       '/api': {
-        target: 'https://127.0.0.1:5000', // Forces IPv4 Backend (HTTPS)
+        target: 'https://127.0.0.1:5000', // Backend stays HTTPS
         changeOrigin: true,
         secure: false, // Self-signed cert
       },
@@ -25,7 +30,6 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    basicSsl(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
