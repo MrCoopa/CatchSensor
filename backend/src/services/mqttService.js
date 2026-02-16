@@ -1,6 +1,9 @@
 const mqtt = require('mqtt');
 const Trap = require('../models/Trap');
 const Reading = require('../models/Reading');
+const User = require('../models/User');
+const PushSubscription = require('../models/PushSubscription');
+const { sendPushNotification } = require('./pushService');
 
 const setupMQTT = (io) => {
     // Config for local Mosquitto and TTN
@@ -91,6 +94,8 @@ const updateTrapData = async (deviceId, data, io) => {
     const trap = await Trap.findOne({ where: { imei: deviceId } });
     if (!trap) return;
 
+    const oldStatus = trap.status;
+
     await trap.update({
         status: data.status,
         batteryVoltage: data.batteryVoltage,
@@ -99,6 +104,16 @@ const updateTrapData = async (deviceId, data, io) => {
         rssi: data.rssi, // Store raw absolute value
         lastReading: new Date()
     });
+
+    // PUSH NOTIFICATION TRIGGER
+    if (trap.userId) {
+        if (data.status === 'triggered' && oldStatus !== 'triggered') {
+            triggerPush(trap.userId, trap, 'ALARM');
+        }
+        else if (data.batteryPercent < 20) {
+            triggerPush(trap.userId, trap, 'LOW_BATTERY');
+        }
+    }
 
     await Reading.create({
         trapId: trap.id,
@@ -112,5 +127,24 @@ const updateTrapData = async (deviceId, data, io) => {
     // Real-time broadcast
     io.emit('trap_update', trap);
 };
+
+async function triggerPush(userId, trap, type) {
+    try {
+        const subscriptions = await PushSubscription.findAll({ where: { userId } });
+        if (subscriptions.length > 0) {
+            console.log(`Push: Sending ${type} notification to ${subscriptions.length} devices for user ${userId}`);
+            for (const sub of subscriptions) {
+                // Formatting for web-push library
+                const pushSubscription = {
+                    endpoint: sub.endpoint,
+                    keys: sub.keys
+                };
+                await sendPushNotification(trap, type, pushSubscription);
+            }
+        }
+    } catch (err) {
+        console.error('Push Trigger Error:', err);
+    }
+}
 
 module.exports = { setupMQTT };

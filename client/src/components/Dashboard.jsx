@@ -11,7 +11,7 @@ const Dashboard = ({ onLogout }) => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedTrap, setSelectedTrap] = useState(null);
 
-    const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
+    const baseUrl = '';
 
     const fetchTraps = async () => {
         try {

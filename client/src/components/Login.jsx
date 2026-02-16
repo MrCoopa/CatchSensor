@@ -10,7 +10,7 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
         e.preventDefault();
         setError('');
         try {
-            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
+            const baseUrl = '';
             const response = await fetch(`${baseUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

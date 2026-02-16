@@ -23,7 +23,7 @@ const TrapCard = ({ trap, onViewHistory }) => {
             border: 'border-l-[6px] border-l-gray-400',
             bg: 'bg-gray-100/50',
             text: 'text-gray-500',
-            label: 'KEIN KONTAKT (>8H)',
+            label: 'OFFLINE (>8h)',
             timeColor: 'text-gray-400'
         },
         triggered: {

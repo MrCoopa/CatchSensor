@@ -12,12 +12,43 @@ const Setup = ({ onLogout }) => {
         confirmPassword: ''
     });
     const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
+    const [swStatus, setSwStatus] = useState('Prüfe...');
+
+    useEffect(() => {
+        const checkSW = () => {
+            if ('serviceWorker' in navigator) {
+                // Check for load error from main.jsx
+                if (window.swError) {
+                    setSwStatus(`Fehler: ${window.swError.message || 'Installation fehlgeschlagen'}`);
+                    return;
+                }
+
+                // Check immediate state
+                if (navigator.serviceWorker.controller) {
+                    setSwStatus('Aktiv ✅ (App bereit)');
+                } else {
+                    navigator.serviceWorker.ready.then(() => {
+                        setSwStatus('Aktiv ✅ (App bereit)');
+                    }).catch((e) => {
+                        console.error('SW Ready Error:', e);
+                        setSwStatus('Inaktiv ⚠️ (Browser-Schutz?)');
+                    });
+                }
+            } else {
+                setSwStatus('Nicht unterstützt ❌');
+            }
+        };
+
+        // Little delay to ensure main.jsx ran
+        const timer = setTimeout(checkSW, 500);
+        return () => clearTimeout(timer);
+    }, []);
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
+            const baseUrl = '';
 
             // Parallel fetch for user profile and traps list
             const [userRes, trapsRes] = await Promise.all([
@@ -48,7 +79,7 @@ const Setup = ({ onLogout }) => {
         if (window.confirm(`Möchten Sie die Falle "${name}" wirklich löschen?`)) {
             try {
                 const token = localStorage.getItem('token');
-                const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
+                const baseUrl = '';
                 const response = await fetch(`${baseUrl}/api/traps/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -82,7 +113,7 @@ const Setup = ({ onLogout }) => {
 
         try {
             const token = localStorage.getItem('token');
-            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
+            const baseUrl = '';
             const response = await fetch(`${baseUrl}/api/auth/change-password`, {
                 method: 'POST',
                 headers: {
@@ -113,10 +144,104 @@ const Setup = ({ onLogout }) => {
         }
     };
 
+    const [pushEnabled, setPushEnabled] = useState(false);
+
+    // URLBase64 to Uint8Array converter for VAPID
+    const urlBase64ToUint8Array = (base64String) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const checkPushSubscription = async () => {
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                setPushEnabled(true);
+            }
+        }
+    };
+
+    const togglePush = async () => {
+        if (!('serviceWorker' in navigator)) {
+            setStatusMessage({ text: 'Service Worker nicht vom Browser unterstützt.', type: 'error' });
+            return;
+        }
+
+        // Check VAPID Key presence
+        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+        if (!vapidKey) {
+            setStatusMessage({ text: 'Fehler: VAPID Key fehlt (Neustart erforderlich?).', type: 'error' });
+            return;
+        }
+
+        setStatusMessage({ text: 'Aktiviere Push...', type: '' });
+
+        try {
+            // Timeout race for service worker ready
+            const swReadyPromise = navigator.serviceWorker.ready;
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Service Worker antwortet nicht (SSL/Timeout).')), 5000)
+            );
+
+            const registration = await Promise.race([swReadyPromise, timeoutPromise]);
+
+            if (pushEnabled) {
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) await subscription.unsubscribe();
+                setPushEnabled(false);
+                setStatusMessage({ text: 'Push deaktiviert.', type: 'success' });
+                return;
+            }
+
+            const sub = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidKey)
+            });
+
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/notifications/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(sub)
+            });
+
+            if (res.ok) {
+                setPushEnabled(true);
+                setStatusMessage({ text: 'Push aktiviert! Teste...', type: 'success' });
+                await fetch('/api/notifications/test', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                setStatusMessage({ text: 'Aktiviert & Test gesendet! 🚀', type: 'success' });
+            } else {
+                throw new Error('Server-Fehler beim Speichern.');
+            }
+        } catch (err) {
+            console.error('Push Error:', err);
+            setStatusMessage({ text: `Push-Fehler: ${err.message}`, type: 'error' });
+        }
+    };
+
+    useEffect(() => {
+        checkPushSubscription();
+    }, []);
+
     const testConnection = async () => {
         setStatusMessage({ text: 'Teste Verbindung...', type: '' });
         try {
-            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
+            const baseUrl = '';
             const response = await fetch(`${baseUrl}/api/status`);
             if (response.ok) {
                 setStatusMessage({ text: 'Verbindung zum Server erfolgreich! ✅', type: 'success' });
@@ -300,6 +425,38 @@ const Setup = ({ onLogout }) => {
                     </div>
                 </section>
 
+                {/* App Installation Section */}
+                <section>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Installation</label>
+                    <div className="bg-gradient-to-br from-[#1b3a2e] to-[#2a5a48] rounded-3xl shadow-lg p-6 text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+
+                        <div className="relative z-10">
+                            <h3 className="text-lg font-bold mb-2">Als App nutzen</h3>
+                            <p className="text-sm text-gray-200 mb-4 leading-relaxed">
+                                Für das beste Erlebnis ohne Browser-Leiste:
+                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/10">
+                                    <div className="font-bold text-xs uppercase tracking-widest text-green-300 mb-1">iOS (iPhone)</div>
+                                    <p className="text-xs space-y-1">
+                                        <span className="block">1. Tippen Sie auf <span className="font-bold">Teilen</span> (Viereck mit Pfeil)</span>
+                                        <span className="block">2. Wählen Sie <span className="font-bold">"Zum Home-Bildschirm"</span></span>
+                                    </p>
+                                </div>
+                                <div className="bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/10">
+                                    <div className="font-bold text-xs uppercase tracking-widest text-green-300 mb-1">Android</div>
+                                    <p className="text-xs space-y-1">
+                                        <span className="block">1. Tippen Sie auf <span className="font-bold">⋮ (Menü)</span></span>
+                                        <span className="block">2. Wählen Sie <span className="font-bold">"App installieren"</span></span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Info Section */}
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Informationen</label>
@@ -313,6 +470,37 @@ const Setup = ({ onLogout }) => {
                                     <p className="text-sm font-bold text-gray-900">App Version</p>
                                     <p className="text-[10px] text-gray-400 font-medium">TrapSensor v1.2.0 (Build 2026.02)</p>
                                 </div>
+                            </div>
+                        </div>
+                        <div className="p-4 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
+                            <div className="flex items-center space-x-4">
+                                <div className="bg-gray-100 p-2.5 rounded-2xl text-gray-400">
+                                    <Shield size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">PWA Status</p>
+                                    <p className={`text-[10px] font-bold ${swStatus.includes('Aktiv') ? 'text-green-600' : 'text-red-500'}`}>{swStatus}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                {/* Push Notifications Section */}
+                <section>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Benachrichtigungen</label>
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
+                            <div className="flex items-center space-x-4">
+                                <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                    <Shield size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
+                                </div>
+                            </div>
+                            <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
+                                <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
                         </div>
                     </div>

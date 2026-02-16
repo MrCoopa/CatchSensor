@@ -7,6 +7,18 @@ const sequelize = require('./src/config/database');
 // Import Models
 const Trap = require('./src/models/Trap');
 const Reading = require('./src/models/Reading');
+const User = require('./src/models/User');
+const PushSubscription = require('./src/models/PushSubscription');
+
+// Associations
+User.hasMany(Trap, { foreignKey: 'userId' });
+Trap.belongsTo(User, { foreignKey: 'userId' });
+
+Trap.hasMany(Reading, { foreignKey: 'trapId' });
+Reading.belongsTo(Trap, { foreignKey: 'trapId' });
+
+User.hasMany(PushSubscription, { foreignKey: 'userId', onDelete: 'CASCADE' });
+PushSubscription.belongsTo(User, { foreignKey: 'userId' });
 
 // Import routes
 const trapRoutes = require('./src/routes/trapRoutes');
@@ -18,13 +30,42 @@ const { setupWatchdog } = require('./src/services/watchdogService');
 
 dotenv.config();
 
+const https = require('https'); // Changed from http
+const fs = require('fs'); // Added fs
+
+// ... imports ...
+
+dotenv.config();
+
 const app = express();
-const server = http.createServer(app);
+// Load SSL Certs
+let server;
+try {
+    const options = {
+        key: fs.readFileSync('server.key'),
+        cert: fs.readFileSync('server.crt')
+    };
+    server = https.createServer(options, app);
+    console.log('Server running in HTTPS mode 🔒');
+} catch (e) {
+    console.error('SSL Certs missing! Falling back to HTTP (or generate them).', e);
+    const http = require('http');
+    server = http.createServer(app);
+}
+
 const io = require('socket.io')(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
     }
+});
+
+// Global Error Handlers
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('UNHANDLED REJECTION:', reason);
 });
 
 // Start Background Services
@@ -212,6 +253,7 @@ app.get('/api/status', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/traps', protect, trapRoutes);
 app.use('/api/readings', protect, readingRoutes);
+app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
