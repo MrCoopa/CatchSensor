@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:latest
+    container_name: trapsensor_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE: trap_system
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - ./db-data:/var/lib/mysql
+      - ./backend/src/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - trap_net
+
+  broker:
+    image: eclipse-mosquitto:latest
+    container_name: trap_broker
+    restart: always
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto-data:/mosquitto/data
+      - ./mosquitto-log:/mosquitto/log
+    networks:
+      - trap_net
+
+  app:
+    image: node:lts-alpine
+    container_name: trapsensor_app
+    restart: always
+    depends_on:
+      - db
+      - broker
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - ./ssl:/app/ssl
+    working_dir: /app
+    environment:
+      - DB_HOST=db
+      - MQTT_LOCAL_URL=mqtt://broker:1883
+      - SSL_KEY_PATH=/app/ssl/server.key
+      - SSL_CERT_PATH=/app/ssl/server.cert
+    command: sh -c "npm install && npm start"
+    networks:
+      - trap_net
+
+networks:
+  trap_net:
+    driver: bridge
