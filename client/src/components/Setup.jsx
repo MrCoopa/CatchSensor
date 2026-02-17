@@ -13,34 +13,161 @@ const Setup = ({ onLogout }) => {
     });
     const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
     const [swStatus, setSwStatus] = useState('Prüfe...');
+    const [notifPermission, setNotifPermission] = useState('default');
+    const [swLogs, setSwLogs] = useState([]);
+
+
 
     useEffect(() => {
         const checkSW = async () => {
+            if ('Notification' in window) {
+                setNotifPermission(Notification.permission);
+            }
             if ('serviceWorker' in navigator) {
-                // detailed logging
-                const regs = await navigator.serviceWorker.getRegistrations();
-                let debugText = `Regs: ${regs.length}`;
+                try {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    let statusParts = [`Regs: ${regs.length}`];
 
-                if (window.swError) {
-                    setSwStatus(`Fehler: ${window.swError.message}`);
-                    return;
-                }
+                    if (regs.length > 0) {
+                        const reg = regs[0];
+                        if (reg.installing) statusParts.push('⏳ Installiere...');
+                        if (reg.waiting) statusParts.push('💤 Wartet...');
+                        if (reg.active) statusParts.push('✅ Aktiv');
+                    }
 
-                if (navigator.serviceWorker.controller) {
-                    setSwStatus('Aktiv ✅ (Ready)');
-                } else {
-                    setSwStatus(`Inaktiv ⚠️ (${debugText})`);
-                    // Try to register manually if missing?
+                    if (window.swError) {
+                        setSwStatus(`Fehler: ${window.swError.message}`);
+                    } else if (navigator.serviceWorker.controller) {
+                        setSwStatus(`Bereit ✅ (${statusParts.join(', ')})`);
+                    } else {
+                        setSwStatus(`Inaktiv ⚠️ (${statusParts.join(', ')})`);
+                    }
+                } catch (err) {
+                    setSwStatus(`System-Fehler: ${err.message}`);
                 }
             } else {
                 setSwStatus('Nicht unterstützt ❌');
             }
         };
 
-        // Little delay to ensure main.jsx ran
-        const timer = setTimeout(checkSW, 500);
-        return () => clearTimeout(timer);
+
+        const timer = setTimeout(checkSW, 1000);
+        const interval = setInterval(checkSW, 3000); // Keep polling status
+
+        // Listen for SW debug logs
+        const handleSWMessage = (event) => {
+            if (event.data && event.data.type === 'SW_DEBUG_LOG') {
+                setSwLogs(prev => [`[${new Date().toLocaleTimeString()}] ${event.data.message}`, ...prev].slice(0, 10));
+            }
+        };
+        navigator.serviceWorker.addEventListener('message', handleSWMessage);
+
+        return () => {
+            clearTimeout(timer);
+            clearInterval(interval);
+            navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+        };
     }, []);
+
+
+    const handleManualRegister = async () => {
+        if (!('serviceWorker' in navigator)) {
+            setStatusMessage({ text: 'Browser unterstützt keine Service Worker.', type: 'error' });
+            return;
+        }
+
+        // Use dev-sw.js with the query param for Vite PWA dev mode
+        const swPath = import.meta.env.DEV ? '/dev-sw.js?dev-sw' : '/sw.js';
+
+        setStatusMessage({ text: `Starte SW (${swPath})...`, type: '' });
+        try {
+            const reg = await navigator.serviceWorker.register(swPath, { scope: '/', type: 'module' });
+            setStatusMessage({ text: 'Registrierung gesendet! Bitte Seite neu laden.', type: 'success' });
+            console.log('Manual SW Registration successful:', reg);
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (err) {
+            console.error('Manual SW Reg Error:', err);
+            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
+        }
+    };
+
+    const handleLocalTest = async () => {
+        if (!navigator.serviceWorker.controller) {
+            setStatusMessage({ text: 'Service Worker nicht aktiv oder Seite nicht "controlled".', type: 'error' });
+            return;
+        }
+        if (Notification.permission !== 'granted') {
+            setStatusMessage({ text: `Hinweis: Berechtigung ist "${Notification.permission}". Bitte erlauben.`, type: 'error' });
+        }
+        setStatusMessage({ text: 'Sende lokalen Test-Befehl...', type: '' });
+        navigator.serviceWorker.controller.postMessage({ type: 'LOCAL_TEST' });
+        setTimeout(() => setStatusMessage({ text: 'Befehl gesendet. Prüfung am Handy!', type: 'success' }), 1000);
+    };
+
+    const handleMainThreadTest = async () => {
+        if (!('serviceWorker' in navigator)) {
+            setStatusMessage({ text: 'Service Worker nicht unterstützt.', type: 'error' });
+            return;
+        }
+        if (Notification.permission !== 'granted') {
+            setStatusMessage({ text: 'Keine Berechtigung! Bitte erst anfordern.', type: 'error' });
+            return;
+        }
+        setStatusMessage({ text: 'Sende System-Test...', type: '' });
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            console.log('Main thread testing with registration:', reg);
+
+            await reg.showNotification('System-Test Erfolg! 🦊', {
+                body: 'Diese Nachricht kommt direkt über den Service Worker Registrierung.',
+                icon: '/icons/fox-logo.png',
+                vibrate: [100, 50, 100],
+                badge: '/icons/fox-logo.png',
+                tag: 'test-notif-' + Date.now()
+            });
+
+            setStatusMessage({ text: 'Test-Befehl an System gesendet! ✅', type: 'success' });
+            console.log('reg.showNotification called successfully');
+        } catch (err) {
+            console.error('Main thread showNotification error:', err);
+            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
+        }
+    };
+
+
+    const handleRequestPermission = async () => {
+        if (!('Notification' in window)) {
+            setStatusMessage({ text: 'Browser unterstützt keine Benachrichtigungen.', type: 'error' });
+            return;
+        }
+        setStatusMessage({ text: 'Fordere Berechtigung an...', type: '' });
+        try {
+            const permission = await Notification.requestPermission();
+            setNotifPermission(permission);
+            if (permission === 'granted') {
+                setStatusMessage({ text: 'Berechtigung erteilt! 🎉', type: 'success' });
+            } else {
+                setStatusMessage({ text: `Abgelehnt (${permission}). Bitte in Browsereinstellungen ändern.`, type: 'error' });
+            }
+        } catch (err) {
+            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
+        }
+    };
+
+    const handleForceCleanup = async () => {
+        if (!confirm('Dies löscht alle Service Worker und setzt die Push-Verbindung zurück. Fortfahren?')) return;
+        setStatusMessage({ text: 'Bereinige Service Worker...', type: '' });
+        try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (let reg of regs) {
+                await reg.unregister();
+            }
+            setStatusMessage({ text: 'Bereinigt! Bitte Seite mit Strg+F5 neu laden.', type: 'success' });
+            setTimeout(() => window.location.reload(), 2000);
+        } catch (err) {
+            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -184,15 +311,24 @@ const Setup = ({ onLogout }) => {
         setStatusMessage({ text: 'Aktiviere Push...', type: '' });
 
         try {
-            // Timeout race for service worker ready
-            const swReadyPromise = navigator.serviceWorker.ready;
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Service Worker antwortet nicht (SSL/Timeout).')), 5000)
-            );
+            console.log('Push: Starting togglePush...');
+            // Check current registration first to avoid hanging on .ready
+            let registration = await navigator.serviceWorker.getRegistration();
+            console.log('Push: Current registration:', registration);
 
-            const registration = await Promise.race([swReadyPromise, timeoutPromise]);
+            if (!registration || !registration.active) {
+                setStatusMessage({ text: 'Warte auf Service Worker Aktivierung...', type: '' });
+                console.log('Push: Waiting for .ready...');
+                const swReadyPromise = navigator.serviceWorker.ready;
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Service Worker wird nicht aktiv (Timeout). Bitte Seite neu laden.')), 10000)
+                );
+                registration = await Promise.race([swReadyPromise, timeoutPromise]);
+                console.log('Push: .ready resolved:', registration);
+            }
 
             if (pushEnabled) {
+                console.log('Push: Disabling...');
                 const subscription = await registration.pushManager.getSubscription();
                 if (subscription) await subscription.unsubscribe();
                 setPushEnabled(false);
@@ -200,11 +336,14 @@ const Setup = ({ onLogout }) => {
                 return;
             }
 
+            console.log('Push: Subscribing with VAPID key...');
             const sub = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(vapidKey)
             });
+            console.log('Push: Subscription object created:', sub.endpoint);
 
+            setStatusMessage({ text: 'Speichere am Server...', type: '' });
             const token = localStorage.getItem('token');
             const res = await fetch('/api/notifications/subscribe', {
                 method: 'POST',
@@ -216,18 +355,22 @@ const Setup = ({ onLogout }) => {
             });
 
             if (res.ok) {
+                console.log('Push: Server acknowledged subscription.');
                 setPushEnabled(true);
                 setStatusMessage({ text: 'Push aktiviert! Teste...', type: 'success' });
-                await fetch('/api/notifications/test', {
+                const testRes = await fetch('/api/notifications/test', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                console.log('Push: Test request sent. Status:', testRes.status);
                 setStatusMessage({ text: 'Aktiviert & Test gesendet! 🚀', type: 'success' });
             } else {
-                throw new Error('Server-Fehler beim Speichern.');
+                const errData = await res.json().catch(() => ({}));
+                console.error('Push: Server error:', res.status, errData);
+                throw new Error(`Server-Fehler (${res.status}): ${errData.error || 'Unbekannt'}`);
             }
         } catch (err) {
-            console.error('Push Error:', err);
+            console.error('Push Error Detail:', err);
             setStatusMessage({ text: `Push-Fehler: ${err.message}`, type: 'error' });
         }
     };
@@ -357,6 +500,33 @@ const Setup = ({ onLogout }) => {
                             <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
                                 <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Token Section for Simulator */}
+                <section>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Entwickler / Simulator</label>
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div
+                            onClick={() => {
+                                const token = localStorage.getItem('token');
+                                navigator.clipboard.writeText(token);
+                                setStatusMessage({ text: 'Token in Zwischenablage kopiert! ✅', type: 'success' });
+                                setTimeout(() => setStatusMessage({ text: '', type: '' }), 3000);
+                            }}
+                            className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                            <div className="flex items-center space-x-4">
+                                <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600">
+                                    <Settings size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">API-Token kopieren</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Für MQTT-Simulator & Debugging</p>
+                                </div>
+                            </div>
+                            <ChevronRight size={18} className="text-gray-300" />
                         </div>
                     </div>
                 </section>
@@ -503,6 +673,51 @@ const Setup = ({ onLogout }) => {
                                 </div>
                             </div>
                         </div>
+                        <div className="p-4 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
+                            <div className="flex items-center space-x-4">
+                                <div className={`p-2.5 rounded-2xl ${notifPermission === 'granted' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                    <Info size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Berechtigung</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-tight">
+                                        {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Ungeklärt'}
+                                    </p>
+                                </div>
+                            </div>
+                            {notifPermission !== 'granted' && (
+                                <button
+                                    onClick={handleRequestPermission}
+                                    className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100 active:scale-95 transition-all"
+                                >
+                                    Anfordern
+                                </button>
+                            )}
+                        </div>
+                        <div className="p-4 flex flex-col space-y-2 border-t border-gray-50 bg-amber-50/20">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black text-amber-800 uppercase italic">Debug-Kontext:</span>
+                                <span className="text-[10px] font-mono text-amber-600">{window.location.origin}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] text-gray-500">Controller:</span>
+                                <span className={`text-[10px] font-bold ${navigator.serviceWorker?.controller ? 'text-green-600' : 'text-red-500'}`}>
+                                    {navigator.serviceWorker?.controller ? 'Aktiv / Verbunden' : 'Gezielt (Neu laden!)'}
+                                </span>
+                            </div>
+                            {swLogs.length > 0 && (
+                                <div className="mt-2 p-2 bg-black/5 rounded-lg font-mono text-[9px] text-gray-600 space-y-1">
+                                    <div className="font-bold border-b border-black/5 pb-1 mb-1">Live SW-Logs:</div>
+                                    {swLogs.map((log, i) => (
+                                        <div key={i} className={log.includes('FEHLER') ? 'text-red-600' : log.includes('Erfolg') ? 'text-green-600' : ''}>
+                                            {log}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+
                         <div
                             onClick={testConnection}
                             className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -518,11 +733,73 @@ const Setup = ({ onLogout }) => {
                             </div>
                             <ChevronRight size={18} className="text-gray-300" />
                         </div>
+                        <div
+                            onClick={handleLocalTest}
+                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-amber-50 group transition-colors cursor-pointer"
+                        >
+                            <div className="flex items-center space-x-4">
+                                <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600 group-hover:bg-amber-100">
+                                    <Shield size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">SW Test-Notiz</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Testet via Service Worker</p>
+                                </div>
+
+                            </div>
+                            <ChevronRight size={18} className="text-gray-300" />
+                        </div>
+                        <div
+                            onClick={handleMainThreadTest}
+                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-purple-50 group transition-colors cursor-pointer"
+                        >
+                            <div className="flex items-center space-x-4">
+                                <div className="bg-purple-50 p-2.5 rounded-2xl text-purple-600 group-hover:bg-purple-100">
+                                    <Shield size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Direct Test-Notiz</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Testet via System-Interface</p>
+                                </div>
+
+                            </div>
+                            <ChevronRight size={18} className="text-gray-300" />
+                        </div>
+                        <div
+                            onClick={handleManualRegister}
+                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-green-50 group transition-colors cursor-pointer"
+                        >
+                            <div className="flex items-center space-x-4">
+                                <div className="bg-green-50 p-2.5 rounded-2xl text-green-600 group-hover:bg-green-100">
+                                    <Settings size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">SW manuell starten</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Erzwingt Registrierung (Mobile Fix)</p>
+                                </div>
+                            </div>
+                            <ChevronRight size={18} className="text-gray-300" />
+                        </div>
+                        <div
+                            onClick={handleForceCleanup}
+                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-red-50 group transition-colors cursor-pointer"
+                        >
+                            <div className="flex items-center space-x-4">
+                                <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-100">
+                                    <Trash2 size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">SW Fehler beheben</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Bereinigt & Repariert App-Cache</p>
+                                </div>
+                            </div>
+                            <ChevronRight size={18} className="text-gray-300" />
+                        </div>
                     </div>
                 </section>
 
             </main>
-        </div>
+        </div >
     );
 };
 

@@ -78,9 +78,7 @@ function App() {
             <span className="text-[10px] font-bold uppercase tracking-widest">Setup</span>
           </button>
         </div>
-      </nav>
-    </div>
-  );
+        );
 }
 
-export default App;
+        export default App;

@@ -2,46 +2,89 @@ import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 
 cleanupOutdatedCaches()
 
-// Validates that the service worker has been properly installed
+// Broadcasting for remote debugging
+const broadcastLog = (msg, type = 'log') => {
+    clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clients => {
+        clients.forEach(client => {
+            client.postMessage({ type: 'SW_DEBUG_LOG', message: msg, logType: type });
+        });
+    });
+};
+
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting()
     }
+    if (event.data && event.data.type === 'LOCAL_TEST') {
+        broadcastLog('SW: Empfange LOCAL_TEST...');
+        const options = {
+            body: 'Test vom Service Worker.',
+            data: { url: '/' }
+        };
+        self.registration.showNotification('Test Erfolg! 🎉', options)
+            .then(() => broadcastLog('SW: showNotification (local) Erfolg ✅'))
+            .catch(err => broadcastLog('SW: showNotification (local) FEHLER ❌: ' + err.message, 'error'));
+    }
 })
 
-precacheAndRoute(self.__WB_MANIFEST)
+precacheAndRoute(self.__WB_MANIFEST || [])
 
-// Push Event Listener
+// Hardened Push Event Listener
 self.addEventListener('push', (event) => {
-    let data = {};
-    if (event.data) {
-        data = event.data.json();
+    broadcastLog('SW: Push-Event empfangen 🔔');
+    let data = {
+        title: 'TrapSensor Meldung',
+        body: 'Es gibt eine neue Information.',
+    };
+
+    try {
+        if (event.data) {
+            const rawData = event.data.text();
+            broadcastLog('SW: Raw push data: ' + rawData);
+
+            try {
+                const jsonData = JSON.parse(rawData);
+                data = { ...data, ...jsonData };
+                broadcastLog('SW: JSON-Parsing Erfolg');
+            } catch (jsonErr) {
+                broadcastLog('SW: Kein JSON, nutze Text-Body');
+                data.body = rawData;
+            }
+        }
+    } catch (e) {
+        broadcastLog('SW: Fehler beim Verarbeiten: ' + e.message, 'error');
     }
 
-    const title = data.title || 'TrapSensor Triggered!';
+    const title = data.title || 'TrapSensor!';
     const options = {
-        body: data.body || 'Something happened.',
-        icon: data.icon || '/icons/fox-logo.png',
-        badge: '/icons/fox-logo.png', // Small icon for notification bar
+        body: data.body || 'Update verfügbar.',
+        tag: 'trapsensor-notification',
+        renotify: true,
+        requireInteraction: true,
         data: data.data || { url: '/' }
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+        self.registration.showNotification(title, options)
+            .then(() => broadcastLog('SW: Benachrichtigung angezeigt ✅'))
+            .catch(err => broadcastLog('SW: showNotification FEHLER ❌: ' + err.message, 'error'))
+    );
 });
 
-// Notification Click Listener
+
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // Check if app is open
             for (const client of clientList) {
-                if (client.url && 'focus' in client) {
+                if ('focus' in client) {
                     return client.focus();
                 }
             }
             if (clients.openWindow) {
-                return clients.openWindow(event.notification.data.url || '/');
+                return clients.openWindow(targetUrl);
             }
         })
     );
