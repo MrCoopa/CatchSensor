@@ -21,14 +21,14 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
             border: 'border-l-[6px] border-l-green-600',
             bg: 'bg-green-50/50',
             text: 'text-green-600',
-            label: 'AKTIV',
+            label: 'ONLINE',
             timeColor: 'text-gray-400'
         },
         inactive: {
             border: 'border-l-[6px] border-l-gray-400',
             bg: 'bg-gray-100/50',
             text: 'text-gray-500',
-            label: 'OFFLINE (>8h)',
+            label: 'OFFLINE',
             timeColor: 'text-gray-400'
         },
         triggered: {
@@ -37,7 +37,8 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
             text: 'text-red-600',
             label: 'FANG GEMELDET!',
             timeColor: 'text-gray-400',
-            animate: 'animate-pulse'
+            timeColor: 'text-gray-400',
+            // animate: 'animate-pulse' // Disabled by request
         },
     };
 
@@ -56,19 +57,16 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
                             <Users size={16} className="text-blue-500" />
                         )}
                     </h3>
-                    <div className="flex space-x-2 mt-1">
-                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${isLoRa ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                            {trap.type || 'NB-IOT'}
-                        </span>
-                    </div>
                 </div>
                 <span className={`text-xs font-medium ${config.timeColor}`}>
                     {lastUpdate ? formatTimeAgo(lastUpdate) : 'Nie'}
                 </span>
             </div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide my-2">
-                {trap.location || 'Kein Standort hinterlegt'}
-            </p>
+            {trap.location && (
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide my-2">
+                    {trap.location}
+                </p>
+            )}
 
             <div className={`text-sm font-black tracking-wider mb-4 ${config.text}`}>
                 {config.label}
@@ -84,17 +82,17 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
                         </div>
                     </div>
 
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex items-center space-x-2 text-gray-500">
                         <div className="flex items-center space-x-2">
                             <SignalIndicator rssi={isLoRa ? trap.lorawanTrapSensor?.loraRssi : trap.rssi} barWidth="w-1" barHeight="h-4" className="mb-0.5" />
-                            <div className="text-sm font-medium text-gray-500">
-                                <p className="leading-none mt-1">-{isLoRa ? (trap.lorawanTrapSensor?.loraRssi || 0) : (trap.rssi || 0)} dBm</p>
+                            <div className="text-sm font-medium text-gray-500 leading-none mt-0.5">
+                                {(isLoRa ? (trap.lorawanTrapSensor?.loraRssi || 0) : (trap.rssi || 0))} dBm
                             </div>
                         </div>
                         {isLoRa && trap.lorawanTrapSensor && (
-                            <div className="flex gap-2 mt-0.5">
-                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase">SNR {trap.lorawanTrapSensor.snr}</span>
-                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase">SF {trap.lorawanTrapSensor.spreadingFactor}</span>
+                            <div className="flex items-center gap-1.5 ml-1">
+                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase leading-none">SNR {Number(trap.lorawanTrapSensor.snr).toFixed(1)}</span>
+                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase leading-none">SF {trap.lorawanTrapSensor.spreadingFactor}</span>
                             </div>
                         )}
                     </div>

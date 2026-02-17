@@ -46,8 +46,11 @@ const setupMQTT = (io, aedes) => {
             password: process.env.TTN_MQTT_PASS,
             topic: '#' // Use wildcard as specific topics are being rejected
         }, (topic, payload) => {
+            console.log(`MQTT: TTN Raw Topic: ${topic}`);
             if (topic.endsWith('/up')) {
                 handleMQTTMessage(topic, payload, io, 'LORAWAN');
+            } else {
+                console.log(`MQTT: Ignored TTN Topic: ${topic}`);
             }
         });
     }
@@ -177,7 +180,8 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
                 gatewayCount,
                 fCnt,
                 spreadingFactor: sf,
-                lastVoltage: voltage / 1000, // Still passed through
+                batteryVoltage: voltage, // Ensure consistent property name (mV)
+                lastVoltage: voltage / 1000, // Keep for backward compatibility if needed
                 lastSeen: new Date()
             };
 
@@ -227,7 +231,7 @@ const updateTrapData = async (deviceId, data, io) => {
 
         if (data.type === 'NB-IOT') {
             trap.imei = deviceId;
-            trap.status = data.status;
+            trap.status = data.status || 'active';
             trap.batteryVoltage = data.batteryVoltage;
             trap.batteryPercent = data.batteryPercent;
             trap.rssi = data.rssi;
@@ -236,10 +240,10 @@ const updateTrapData = async (deviceId, data, io) => {
         } else {
             // LoRaWAN Unified
             trap.deviceId = deviceId;
-            trap.status = data.status;
-            trap.batteryVoltage = Math.round(data.lastVoltage * 1000); // Normalize to mV
+            trap.status = data.status || 'active';
+            trap.batteryVoltage = data.batteryVoltage; // Already in mV from normalizedData
             trap.batteryPercent = data.batteryPercent;
-            trap.lastSeen = data.lastSeen;
+            trap.lastSeen = data.lastSeen || new Date();
 
             await trap.save();
 
@@ -284,10 +288,17 @@ const updateTrapData = async (deviceId, data, io) => {
 
 
         // 4. Send Notifications
-        if (trap.status === 'triggered') {
-            await sendUnifiedNotification(trap, 'ALARM', `Falle "${trap.alias || trap.name}" hat ausgelöst!`);
-        } else if (trap.batteryPercent !== null && trap.batteryPercent < 20) {
-            await sendUnifiedNotification(trap, 'LOW_BATTERY', `Batterie schwach bei "${trap.alias || trap.name}": ${trap.batteryPercent}%`);
+        if (trap.userId) {
+            const user = await User.findByPk(trap.userId);
+            if (user) {
+                const threshold = user.batteryThreshold || 20;
+
+                if (trap.status === 'triggered') {
+                    await sendUnifiedNotification(user, trap, 'ALARM');
+                } else if (trap.batteryPercent !== null && trap.batteryPercent < threshold) {
+                    await sendUnifiedNotification(user, trap, 'LOW_BATTERY');
+                }
+            }
         }
 
     } catch (err) {

@@ -91,19 +91,26 @@ const getMe = async (req, res) => {
 
 const updateProfile = async (req, res) => {
     try {
-        const { pushoverAppKey, pushoverUserKey } = req.body;
+        const { pushoverAppKey, pushoverUserKey, pushEnabled, batteryThreshold } = req.body;
         const user = await User.findByPk(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        user.pushoverAppKey = pushoverAppKey;
-        user.pushoverUserKey = pushoverUserKey;
+        if (pushoverAppKey !== undefined) user.pushoverAppKey = pushoverAppKey;
+        if (pushoverUserKey !== undefined) user.pushoverUserKey = pushoverUserKey;
+        if (pushEnabled !== undefined) user.pushEnabled = pushEnabled;
+        if (batteryThreshold !== undefined) user.batteryThreshold = batteryThreshold;
+
         await user.save();
         res.json({
             message: 'Profile updated successfully',
             user: {
+                id: user.id,
                 email: user.email,
+                name: user.name,
                 pushoverAppKey: user.pushoverAppKey,
-                pushoverUserKey: user.pushoverUserKey
+                pushoverUserKey: user.pushoverUserKey,
+                pushEnabled: user.pushEnabled,
+                batteryThreshold: user.batteryThreshold
             }
         });
     } catch (error) {

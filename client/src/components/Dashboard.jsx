@@ -66,7 +66,7 @@ const Dashboard = ({ onLogout }) => {
             console.error('Socket Authentication Error:', err.message);
         });
 
-        socket.on('trap_update', (updatedTrap) => {
+        socket.on('trapUpdate', (updatedTrap) => {
             console.log('Socket: Received update for trap:', updatedTrap.id);
             setTraps(prevTraps =>
                 prevTraps.map(trap => trap.id === updatedTrap.id ? updatedTrap : trap)

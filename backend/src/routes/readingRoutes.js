@@ -55,7 +55,7 @@ router.post('/', async (req, res) => {
 
         // Broadcast update via socket.io
         const updatedTrap = await Trap.findByPk(trapId);
-        req.io.emit('trap_update', updatedTrap);
+        req.io.emit('trapUpdate', updatedTrap);
 
         res.status(201).json(newReading);
     } catch (error) {

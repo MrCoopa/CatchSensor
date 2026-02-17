@@ -37,6 +37,14 @@ const User = sequelize.define('User', {
     pushoverUserKey: {
         type: DataTypes.STRING,
         allowNull: true,
+    },
+    pushEnabled: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+    },
+    batteryThreshold: {
+        type: DataTypes.INTEGER,
+        defaultValue: 20,
     }
 }, {
 

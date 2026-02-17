@@ -12,31 +12,20 @@ const setupWatchdog = (io) => {
         const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
 
         try {
-            // Find traps that haven't responded in 8h
+            // Find traps that haven't responded in 8h and are not already inactive
             const offlineTraps = await Trap.findAll({
                 where: {
-                    [Op.or]: [
-                        { [Op.and]: [{ type: 'NB-IOT' }, { lastReading: { [Op.lt]: eightHoursAgo } }] },
-                        { [Op.and]: [{ type: 'LORAWAN' }, { lastSeen: { [Op.lt]: eightHoursAgo } }] }
-                    ],
-                    // Only check traps that aren't already marked inactive/offline in their respective fields
-                    [Op.or]: [
-                        { [Op.and]: [{ type: 'NB-IOT' }, { status: { [Op.ne]: 'inactive' } }] },
-                        { [Op.and]: [{ type: 'LORAWAN' }, { lastStatus: { [Op.ne]: 'OFFLINE' } }] }
-                    ]
+                    lastSeen: { [Op.lt]: eightHoursAgo },
+                    status: { [Op.ne]: 'inactive' }
                 }
             });
 
             for (const trap of offlineTraps) {
-                console.log(`Watchdog: Trap ${trap.alias || trap.imei} is OFFLINE`);
+                console.log(`Watchdog: Trap ${trap.alias || trap.name || trap.deviceId || trap.imei} is OFFLINE`);
 
-                if (trap.type === 'NB-IOT') {
-                    await trap.update({ status: 'inactive' });
-                } else {
-                    await trap.update({ lastStatus: 'OFFLINE' });
-                }
+                await trap.update({ status: 'inactive' });
 
-                io.emit('trap_update', trap);
+                io.emit('trapUpdate', trap);
 
                 if (trap.userId) {
                     const user = await User.findByPk(trap.userId);

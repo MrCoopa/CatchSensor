@@ -7,9 +7,9 @@ const PushSubscription = require('../models/PushSubscription');
  * Unified Notification Engine
  * Handles Web-Push (PWA) and Pushover (Additional)
  */
-const sendUnifiedNotification = async (user, trap, type) => {
+const sendUnifiedNotification = async (user, trap, type, customMessage = null) => {
     try {
-        // 24h Throttling Logic
+        // ... Throttling logic remains ...
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         if (type === 'LOW_BATTERY') {
             if (trap.lastBatteryAlert && trap.lastBatteryAlert > oneDayAgo) {
@@ -26,30 +26,38 @@ const sendUnifiedNotification = async (user, trap, type) => {
 
         console.log(`NotificationEngine: Sending ${type} for Trap [${trap.alias || trap.deviceId || trap.imei}] to User [${user.id}]`);
 
+        const messageText = customMessage || (
+            type === 'ALARM'
+                ? `Falle "${trap.alias || trap.name || trap.imei}" hat ausgelöst!`
+                : type === 'LOW_BATTERY'
+                    ? `Batterie schwach bei "${trap.alias || trap.name || trap.imei}": ${trap.batteryPercent}%`
+                    : `Status-Update für "${trap.alias || trap.name || trap.imei}".`
+        );
+
         // 1. Web-Push (PWA)
-        const subscriptions = await PushSubscription.findAll({ where: { userId: user.id } });
-        if (subscriptions.length > 0) {
-            for (const sub of subscriptions) {
-                try {
-                    await sendPushNotification(trap, type, { endpoint: sub.endpoint, keys: sub.keys });
-                } catch (err) {
-                    console.error('NotificationEngine: Web-Push failed for sub:', sub.id, err.message);
+        if (user.pushEnabled !== false) {
+            const subscriptions = await PushSubscription.findAll({ where: { userId: user.id } });
+            if (subscriptions.length > 0) {
+                for (const sub of subscriptions) {
+                    try {
+                        await sendPushNotification(trap, type, { endpoint: sub.endpoint, keys: sub.keys });
+                    } catch (err) {
+                        console.error('NotificationEngine: Web-Push failed for sub:', sub.id, err.message);
+                    }
                 }
             }
         }
 
         // 2. Pushover (Optional)
-        if (user.pushoverKey) {
+        if (user.pushoverAppKey && user.pushoverUserKey) {
             const push = new Pushover({
-                user: user.pushoverKey,
-                token: process.env.PUSHOVER_API_TOKEN, // App Token from .env
+                user: user.pushoverUserKey,
+                token: user.pushoverAppKey,
             });
 
             const msg = {
                 title: type === 'ALARM' ? '🚨 FANG-ALARM!' : '⚠️ System-Info',
-                message: type === 'ALARM'
-                    ? `Falle "${trap.alias || trap.imei}" hat ausgelöst!`
-                    : `Status-Update für "${trap.alias || trap.imei}".`,
+                message: messageText,
                 sound: type === 'ALARM' ? 'siren' : 'none',
                 priority: type === 'ALARM' ? 1 : 0,
             };

@@ -22,6 +22,8 @@ const Setup = ({ onLogout }) => {
     const [loadingShares, setLoadingShares] = useState(false);
     const [pushoverAppKey, setPushoverAppKey] = useState('');
     const [pushoverUserKey, setPushoverUserKey] = useState('');
+    const [batteryThreshold, setBatteryThreshold] = useState(20);
+    const [showPushover, setShowPushover] = useState(false);
 
     const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -206,6 +208,8 @@ const Setup = ({ onLogout }) => {
                 setCurrentUser(userData);
                 setPushoverAppKey(userData.pushoverAppKey || '');
                 setPushoverUserKey(userData.pushoverUserKey || '');
+                setBatteryThreshold(userData.batteryThreshold || 20);
+                if (userData.pushEnabled !== undefined) setPushEnabled(userData.pushEnabled);
             }
 
             if (trapsRes.ok) setTraps(await trapsRes.json());
@@ -232,7 +236,7 @@ const Setup = ({ onLogout }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ pushoverAppKey, pushoverUserKey })
+                body: JSON.stringify({ pushoverAppKey, pushoverUserKey, batteryThreshold, pushEnabled })
 
             });
 
@@ -623,7 +627,8 @@ const Setup = ({ onLogout }) => {
                 {/* Push Notifications Section */}
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Benachrichtigungen</label>
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+                        {/* web push toggle */}
                         <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
                             <div className="flex items-center space-x-4">
                                 <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
@@ -638,12 +643,83 @@ const Setup = ({ onLogout }) => {
                                 <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
                         </div>
+
+                        {/* Battery Threshold Slider */}
+                        <div className="p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                    <div className="bg-yellow-50 p-2.5 rounded-2xl text-yellow-600">
+                                        <div className="w-5 h-5 flex items-center justify-center font-bold text-[10px]">{batteryThreshold}%</div>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900">Batterie-Warnschwelle</p>
+                                        <p className="text-[10px] text-gray-400 font-medium">Alarm unter {batteryThreshold}% Ladung</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <input
+                                type="range"
+                                min="10"
+                                max="90"
+                                step="5"
+                                value={batteryThreshold}
+                                onChange={(e) => setBatteryThreshold(parseInt(e.target.value))}
+                                onMouseUp={handleUpdateProfile}
+                                onTouchEnd={handleUpdateProfile}
+                                className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#1b3a2e]"
+                            />
+                        </div>
+
+                        {/* Pushover Config Row */}
+                        <div className="p-4 space-y-4">
+                            <div
+                                className="flex items-center space-x-4 cursor-pointer hover:bg-gray-50 -m-4 p-4 transition-colors"
+                                onClick={() => setShowPushover(!showPushover)}
+                            >
+                                <div className="bg-orange-50 p-2.5 rounded-2xl text-orange-600">
+                                    <Info size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-gray-900">Pushover Integration</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Zusätzliche Alarme am Handy</p>
+                                </div>
+                                <ChevronRight
+                                    size={18}
+                                    className={`text-gray-300 transition-transform ${showPushover ? 'rotate-90' : ''}`}
+                                />
+                            </div>
+
+                            {showPushover && (
+                                <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <input
+                                        type="text"
+                                        placeholder="Pushover Application Key (Token)..."
+                                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-orange-500 transition-colors"
+                                        value={pushoverAppKey}
+                                        onChange={(e) => setPushoverAppKey(e.target.value)}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Pushover User Key..."
+                                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-orange-500 transition-colors"
+                                        value={pushoverUserKey}
+                                        onChange={(e) => setPushoverUserKey(e.target.value)}
+                                    />
+                                    <button
+                                        onClick={handleUpdateProfile}
+                                        disabled={isSavingProfile}
+                                        className={`w-full py-3 bg-black text-white text-xs font-black rounded-xl hover:bg-gray-800 transition-all ${isSavingProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        {isSavingProfile ? 'Speichere...' : 'Einstellungen Speichern'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 </section>
 
-
-
-                {/* Account Section */}
+                {/* Account Section - RESTORED */}
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Konto & Profil</label>
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
@@ -672,43 +748,6 @@ const Setup = ({ onLogout }) => {
                             <ChevronRight size={18} className="text-gray-300" />
                         </div>
 
-                        {/* Pushover Config Row */}
-                        <div className="p-4 space-y-4">
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-orange-50 p-2.5 rounded-2xl text-orange-600">
-                                    <Info size={20} />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-bold text-gray-900">Pushover Integration</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Zusätzliche Alarme am Handy</p>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <input
-                                    type="text"
-                                    placeholder="Pushover Application Key (Token)..."
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-orange-500 transition-colors"
-                                    value={pushoverAppKey}
-                                    onChange={(e) => setPushoverAppKey(e.target.value)}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Pushover User Key..."
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-orange-500 transition-colors"
-                                    value={pushoverUserKey}
-                                    onChange={(e) => setPushoverUserKey(e.target.value)}
-                                />
-                                <button
-                                    onClick={handleUpdateProfile}
-                                    disabled={isSavingProfile}
-                                    className={`w-full py-3 bg-black text-white text-xs font-black rounded-xl hover:bg-gray-800 transition-all ${isSavingProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                    {isSavingProfile ? 'Speichere...' : 'Pushover Keys Speichern'}
-                                </button>
-                            </div>
-                        </div>
-
-
                         <button
                             onClick={onLogout}
                             className="w-full text-left p-4 flex items-center justify-between hover:bg-red-50 transition-colors group"
@@ -726,7 +765,7 @@ const Setup = ({ onLogout }) => {
                 </section>
 
                 {/* Trap Management Section */}
-                <section>
+                < section >
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">TrapSensor Verwalten</label>
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden text-center">
                         {loading ? (
@@ -780,114 +819,116 @@ const Setup = ({ onLogout }) => {
                             </div>
                         )}
                     </div>
-                </section>
+                </section >
 
 
 
                 {/* Trap Details & Share Modal */}
-                {selectedTrap && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-md p-4"
-                        onClick={() => setSelectedTrap(null)}
-                    >
+                {
+                    selectedTrap && (
                         <div
-                            className="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
-                            onClick={(e) => e.stopPropagation()}
+                            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-md p-4"
+                            onClick={() => setSelectedTrap(null)}
                         >
-                            <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <h3 className="text-xl font-black text-gray-900">{selectedTrap.name}</h3>
-                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{selectedTrap.location || 'Kein Standort'}</p>
-                                </div>
-                                <button onClick={() => setSelectedTrap(null)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            <div className="space-y-6">
-                                {/* Basic Info */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-gray-50 p-4 rounded-2xl">
-                                        <div className="text-[10px] uppercase font-black text-gray-400 mb-1">Status</div>
-                                        <div className={`font-bold ${selectedTrap.status === 'active' ? 'text-green-600' : 'text-gray-900'}`}>
-                                            {selectedTrap.status === 'active' ? 'Aktiv' : selectedTrap.status === 'triggered' ? 'Ausgelöst' : 'Inaktiv'}
-                                        </div>
+                            <div
+                                className="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-black text-gray-900">{selectedTrap.name}</h3>
+                                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{selectedTrap.location || 'Kein Standort'}</p>
                                     </div>
-                                    <div className="bg-gray-50 p-4 rounded-2xl">
-                                        <div className="text-[10px] uppercase font-black text-gray-400 mb-1">{selectedTrap.type === 'LORAWAN' ? 'Device ID' : 'IMEI'}</div>
-                                        <div className="font-mono text-sm font-bold text-gray-900 truncate" title={selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}>
-                                            {selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}
-                                        </div>
-                                    </div>
-
+                                    <button onClick={() => setSelectedTrap(null)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
+                                        <X size={20} />
+                                    </button>
                                 </div>
 
-                                {/* Sharing Section */}
-                                <div className="border-t border-gray-100 pt-6">
-                                    <h4 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
-                                        <User size={18} className="text-gray-400" />
-                                        <span>TrapSensor teilen</span>
-                                    </h4>
-
-                                    {currentUser && selectedTrap.userId === currentUser.id ? (
-                                        <>
-                                            <p className="text-xs text-gray-500 mb-4">
-                                                Geben Sie eine E-Mail-Adresse ein, um diesen TrapSensor mit einem anderen Benutzer zu teilen.
-                                            </p>
-
-                                            <form onSubmit={handleShareTrap} className="flex space-x-2 mb-6">
-                                                <input
-                                                    type="email"
-                                                    placeholder="E-Mail Adresse"
-                                                    className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-green-500 transition-colors"
-                                                    value={shareEmail}
-                                                    onChange={(e) => setShareEmail(e.target.value)}
-                                                    required
-                                                />
-                                                <button type="submit" className="bg-black text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors">
-                                                    Teilen
-                                                </button>
-                                            </form>
-
-                                            <div className="space-y-3">
-                                                <div className="text-[10px] uppercase font-black text-gray-400">Bereits geteilt mit:</div>
-                                                {loadingShares ? (
-                                                    <div className="text-sm text-gray-400 italic">Lade Freigaben...</div>
-                                                ) : trapShares.length === 0 ? (
-                                                    <div className="text-sm text-gray-400 italic">Noch mit niemandem geteilt.</div>
-                                                ) : (
-                                                    trapShares.map(share => (
-                                                        <div key={share.userId} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
-                                                            <div className="flex items-center space-x-3">
-                                                                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-400 text-xs font-bold border border-gray-100">
-                                                                    {share.email.charAt(0).toUpperCase()}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-xs font-bold text-gray-900">{share.email}</div>
-                                                                    <div className="text-[10px] text-gray-400">Lesezugriff</div>
-                                                                </div>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => handleUnshareTrap(share.userId)}
-                                                                className="text-red-400 hover:text-red-600 p-2"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    ))
-                                                )}
+                                <div className="space-y-6">
+                                    {/* Basic Info */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-gray-50 p-4 rounded-2xl">
+                                            <div className="text-[10px] uppercase font-black text-gray-400 mb-1">Status</div>
+                                            <div className={`font-bold ${selectedTrap.status === 'active' ? 'text-green-600' : 'text-gray-900'}`}>
+                                                {selectedTrap.status === 'active' ? 'Aktiv' : selectedTrap.status === 'triggered' ? 'Ausgelöst' : 'Inaktiv'}
                                             </div>
-                                        </>
-                                    ) : (
-                                        <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-xs font-medium">
-                                            ⚠️ Sie können diesen TrapSensor nicht teilen, da Sie nicht der Besitzer sind.
                                         </div>
-                                    )}
+                                        <div className="bg-gray-50 p-4 rounded-2xl">
+                                            <div className="text-[10px] uppercase font-black text-gray-400 mb-1">{selectedTrap.type === 'LORAWAN' ? 'Device ID' : 'IMEI'}</div>
+                                            <div className="font-mono text-sm font-bold text-gray-900 truncate" title={selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}>
+                                                {selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                    {/* Sharing Section */}
+                                    <div className="border-t border-gray-100 pt-6">
+                                        <h4 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+                                            <User size={18} className="text-gray-400" />
+                                            <span>TrapSensor teilen</span>
+                                        </h4>
+
+                                        {currentUser && selectedTrap.userId === currentUser.id ? (
+                                            <>
+                                                <p className="text-xs text-gray-500 mb-4">
+                                                    Geben Sie eine E-Mail-Adresse ein, um diesen TrapSensor mit einem anderen Benutzer zu teilen.
+                                                </p>
+
+                                                <form onSubmit={handleShareTrap} className="flex space-x-2 mb-6">
+                                                    <input
+                                                        type="email"
+                                                        placeholder="E-Mail Adresse"
+                                                        className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-green-500 transition-colors"
+                                                        value={shareEmail}
+                                                        onChange={(e) => setShareEmail(e.target.value)}
+                                                        required
+                                                    />
+                                                    <button type="submit" className="bg-black text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors">
+                                                        Teilen
+                                                    </button>
+                                                </form>
+
+                                                <div className="space-y-3">
+                                                    <div className="text-[10px] uppercase font-black text-gray-400">Bereits geteilt mit:</div>
+                                                    {loadingShares ? (
+                                                        <div className="text-sm text-gray-400 italic">Lade Freigaben...</div>
+                                                    ) : trapShares.length === 0 ? (
+                                                        <div className="text-sm text-gray-400 italic">Noch mit niemandem geteilt.</div>
+                                                    ) : (
+                                                        trapShares.map(share => (
+                                                            <div key={share.userId} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+                                                                <div className="flex items-center space-x-3">
+                                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-400 text-xs font-bold border border-gray-100">
+                                                                        {share.email.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-xs font-bold text-gray-900">{share.email}</div>
+                                                                        <div className="text-[10px] text-gray-400">Lesezugriff</div>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleUnshareTrap(share.userId)}
+                                                                    className="text-red-400 hover:text-red-600 p-2"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-xs font-medium">
+                                                ⚠️ Sie können diesen TrapSensor nicht teilen, da Sie nicht der Besitzer sind.
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* App Installation Section */}
                 <section>
@@ -922,11 +963,13 @@ const Setup = ({ onLogout }) => {
                 </section>
 
                 {/* Status Message Container */}
-                {statusMessage.text && !isChangingPassword && (
-                    <div className={`mx-6 p-4 rounded-2xl text-sm font-bold ${statusMessage.type === 'success' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                        {statusMessage.text}
-                    </div>
-                )}
+                {
+                    statusMessage.text && !isChangingPassword && (
+                        <div className={`mx-6 p-4 rounded-2xl text-sm font-bold ${statusMessage.type === 'success' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                            {statusMessage.text}
+                        </div>
+                    )
+                }
 
                 {/* Info Section */}
                 <section>
@@ -1120,7 +1163,7 @@ const Setup = ({ onLogout }) => {
                     </div>
                 </section>
 
-            </main>
+            </main >
         </div >
     );
 };
