@@ -14,7 +14,7 @@ services:
       - DB_PORT=3306
       - NODE_ENV=production
       - JWT_SECRET=please_change_this_in_the_app_later
-      - DB_PASSWORD=password
+      - DB_PASS=password
       - DB_NAME=trapsensor
       - DB_USER=user
     depends_on:
@@ -29,7 +29,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
       MYSQL_DATABASE: ${DB_NAME:-trapsensor}
       MYSQL_USER: ${DB_USER:-user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_PASSWORD: ${DB_PASS:-password}
     volumes:
       - trapsensor_db_data:/var/lib/mysql
 
