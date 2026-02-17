@@ -1,39 +1,37 @@
-<<<<<<< HEAD
-=======
-[README.md](https://github.com/user-attachments/files/25348458/README.md)
->>>>>>> d3b442b20a3070770c9b12967d081f6b48d7f4a4
 # 🦊 TrapSensor
 
-**TrapSensor** ist eine moderne IoT-Lösung zur Echtzeit-Überwachung von Fallenmeldern. Das System bietet eine robuste MQTT-Anbindung, detaillierte Status-Visualisierungen und Push-Benachrichtigungen direkt auf das Smartphone.
+**TrapSensor** ist eine moderne IoT-Lösung zur Echtzeit-Überwachung von Fallenmeldern. Das System unterstützt sowohl **NB-IoT** (über eigenen Broker) als auch **LoRaWAN** (via The Things Network), bietet detaillierte Status-Visualisierungen und intelligente Benachrichtigungen.
 
 ---
 
 ## ✨ Features
 
-- **📊 Echtzeit-Dashboard**: Übersicht über alle Melder mit Status (FANG! / BEREIT), Akkustand und Signalstärke.
-- **🔋 Dynamische Akku-Anzeige**: Grafische Darstellung des Ladestands mit intelligentem Farbwechsel (Rot ≤ 25 %).
-- **📶 Visuelle Signalstärke**: Professionelle Anzeige der Empfangsqualität via Signalbalken und absolutem RSSI-Wert (dBm).
-- **🕒 Detaillierter Verlauf**: Lückenlose Historie aller Ereignisse pro Melder mit Zeitstempel und technischen Details.
-- **📱 PWA-Unterstützung**: Kann als Web-App auf dem Homescreen installiert werden (inkl. Offline-Cache).
-- **🔍 QR-Scanner**: Schnelles Hinzufügen neuer Melder durch Scannen des IMEI-Tags.
-- **🔔 Push-Benachrichtigungen**: Sofortige Info bei Fangmeldung oder kritischem Akkustand.
+- **📊 Dual-Path Dashboard**: Nahtlose Integration von NB-IoT und LoRaWAN Meldern in einer gemeinsamen Übersicht.
+- **📡 Advanced Telemetry**: Anzeige von LoRa-Metadaten wie SNR, Spreading Factor (SF), Gateway-Anzahl und Frame Count.
+- **🔋 Intelligentes Energiemanagement**:
+  - Grafische Anzeige von Spannung (V) und Ladestand (%) mit Farbwechsel.
+  - **Benutzerdefinierte Warnschwelle**: Einstellbarer Prozentwert für Battery-Alerts via Setup-Page.
+- **🔔 Multi-Channel Notifications**:
+  - **PWA Push**: Web-Push Benachrichtigungen direkt auf das Smartphone.
+  - **Pushover Integration**: Dedizierte Schnittstelle für professionelle Alarmierung (App-Token & User-Key).
+- **🕒 Lückenlose Historie**: Scrollbarer Ereignis-Stream mit allen technischen Daten pro Übertragung.
+- **🆕 Auto-Provisioning**: Neue Geräte werden beim ersten Funkkontakt automatisch erfasst und können vom Benutzer einfach geclaimed (zugewiesen) werden.
+- **🐕 Watchdog Service**: Hintergrund-Überwachung, die Melder bei Funkstille (> 8h) automatisch als OFFLINE markiert und warnt.
 
 ---
 
 ## 🛠 Technologie-Stack
 
 ### Frontend
-- **React.js** (Vite)
-- **Tailwind CSS** (Styling)
-- **Lucide Icons** (UI-Elemente)
-- **Socket.io-client** (Real-time Updates)
+- **React.js** (Vite) & Tailwind CSS
+- **Lucide Icons** & Mobile-First Responsive Design
+- **Socket.io** für Echtzeit-Statusupdates (Kein Refresh nötig)
 
 ### Backend
 - **Node.js & Express**
-- **MariaDB** (via Sequelize ORM)
-- **MQTT.js** (Broker-Anbindung)
-- **JSON Web Tokens (JWT)** (Sicherheit)
-- **Web-Push** (Benachrichtigungen)
+- **MariaDB / PostgreSQL** (via Sequelize ORM)
+- **Multi-Broker MQTT**: Getrennte Anbindung für NB-IoT (Aedes/External) und LoRaWAN (TTN).
+- **Web-Push & Pushover** für zuverlässige Alarmierung.
 
 ---
 
@@ -49,8 +47,7 @@ cd TrapSensor
 ```bash
 cd backend
 npm install
-# .env Datei erstellen und DB/MQTT-Zugangsdaten konfigurieren
-node seed.js # Grund-Setup (Benutzer & Fallendemo)
+# .env Datei erstellen (siehe interfaces.md für Details)
 npm start
 ```
 
@@ -63,13 +60,9 @@ npm run dev
 
 ---
 
-## 🦊 Branding & Design
-Das Projekt nutzt ein minimalistisches **Fox-Logo** und folgt einer modernen "Glassmorphism"-Ästhetik. Die Farben sind auf maximale Lesbarkeit im Gelände optimiert.
+## 📄 Dokumentation
+Weitere technische Details finden Sie in der [interfaces.md](file:///d:/TrapSensor/TrapSensor/interfaces.md).
 
 ---
+*Entwickelt mit ❤️ für eine effiziente und zuverlässige Fallenjagd.*
 
-## 📄 Lizenz
-Dieses Projekt ist für den privaten Einsatz zur Fallenüberwachung konzipiert.
-
----
-*Entwickelt mit ❤️ für eine effiziente Fallenjagd.*
