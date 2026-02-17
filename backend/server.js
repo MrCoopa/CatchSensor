@@ -121,10 +121,10 @@ app.use((req, res, next) => {
     next();
 });
 
-// Wildcard route to handle SPA/PWA (only if it's NOT an API call)
-app.get('/:path*', (req, res, next) => {
-    // If it's an API call, don't serve the index.html
-    if (req.url.startsWith('/api') || req.url === '/') {
+// Middleware to handle SPA/PWA routing (serves index.html for non-API GET requests)
+app.use((req, res, next) => {
+    // Only handle GET requests that don't start with /api and aren't root
+    if (req.method !== 'GET' || req.url.startsWith('/api') || req.url === '/') {
         return next();
     }
 
