@@ -18,9 +18,8 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
         e.preventDefault();
         setError('');
         try {
-            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
             const token = localStorage.getItem('token');
-            const response = await fetch(`${baseUrl}/api/traps`, {
+            const response = await fetch('/api/traps', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -47,7 +46,7 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
             <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full p-8 relative">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Neue Falle anlernen</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Neuen TrapSensor hinzufügen</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X size={24} />
                     </button>

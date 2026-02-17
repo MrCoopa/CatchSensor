@@ -1,4 +1,4 @@
-import { Battery, Signal } from 'lucide-react';
+import { Battery, Signal, Users } from 'lucide-react';
 import BatteryIndicator from './BatteryIndicator';
 import SignalIndicator from './SignalIndicator';
 
@@ -10,7 +10,7 @@ const formatTimeAgo = (date) => {
     return 'Gestern';
 };
 
-const TrapCard = ({ trap, onViewHistory }) => {
+const TrapCard = ({ trap, onViewHistory, isShared }) => {
     const statusConfig = {
         active: {
             border: 'border-l-[6px] border-l-green-600',
@@ -44,7 +44,12 @@ const TrapCard = ({ trap, onViewHistory }) => {
             className={`relative cursor-pointer bg-white rounded-2xl shadow-sm p-5 border-y border-r border-gray-100 transition-all active:scale-[0.98] ${config.border} ${config.bg} ${config.animate || ''}`}
         >
             <div className="flex justify-between items-start mb-0.5">
-                <h3 className="text-xl font-bold text-gray-900 tracking-tight">{trap.name}</h3>
+                <h3 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                    {trap.name}
+                    {isShared && (
+                        <Users size={16} className="text-blue-500" />
+                    )}
+                </h3>
                 <span className={`text-xs font-medium ${config.timeColor}`}>
                     {trap.lastReading ? formatTimeAgo(trap.lastReading) : 'Nie'}
                 </span>

@@ -13,9 +13,22 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
             fetch(`${baseUrl}/api/readings/${trap.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
-                .then(res => res.json())
-                .then(data => setReadings(data))
-                .catch(err => console.error(err));
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    return res.json();
+                })
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        setReadings(data);
+                    } else {
+                        console.error('Readings data is not an array:', data);
+                        setReadings([]);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching readings:', err);
+                    setReadings([]);
+                });
         }
     }, [isOpen, trap]);
 

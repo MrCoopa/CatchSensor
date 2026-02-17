@@ -3,14 +3,27 @@ const Reading = require('../models/Reading');
 const Trap = require('../models/Trap');
 const router = express.Router();
 
+const TrapShare = require('../models/TrapShare');
+
 // Get readings for a specific trap
 router.get('/:trapId', async (req, res) => {
     try {
-        const trap = await Trap.findOne({ where: { id: req.params.trapId, userId: req.user.id } });
-        if (!trap) return res.status(401).json({ error: 'Access denied' });
+        const trapId = req.params.trapId;
+        const userId = req.user.id;
+
+        // Check if user is owner
+        const trap = await Trap.findOne({ where: { id: trapId, userId: userId } });
+
+        if (!trap) {
+            // Check if user has shared access
+            const share = await TrapShare.findOne({ where: { trapId: trapId, userId: userId } });
+            if (!share) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+        }
 
         const readings = await Reading.findAll({
-            where: { trapId: req.params.trapId },
+            where: { trapId: trapId },
             order: [['timestamp', 'DESC']],
             limit: 50
         });

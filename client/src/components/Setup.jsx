@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, Info, Trash2, LogOut, ChevronRight, Settings } from 'lucide-react';
+import { User, Shield, Info, Trash2, LogOut, ChevronRight, Settings, X } from 'lucide-react';
 
 const Setup = ({ onLogout }) => {
     const [traps, setTraps] = useState([]);
@@ -15,6 +15,11 @@ const Setup = ({ onLogout }) => {
     const [swStatus, setSwStatus] = useState('Prüfe...');
     const [notifPermission, setNotifPermission] = useState('default');
     const [swLogs, setSwLogs] = useState([]);
+    const [showDebug, setShowDebug] = useState(false);
+    const [selectedTrap, setSelectedTrap] = useState(null);
+    const [shareEmail, setShareEmail] = useState('');
+    const [trapShares, setTrapShares] = useState([]);
+    const [loadingShares, setLoadingShares] = useState(false);
 
 
 
@@ -55,17 +60,23 @@ const Setup = ({ onLogout }) => {
         const interval = setInterval(checkSW, 3000); // Keep polling status
 
         // Listen for SW debug logs
+        // Listen for SW debug logs
         const handleSWMessage = (event) => {
             if (event.data && event.data.type === 'SW_DEBUG_LOG') {
                 setSwLogs(prev => [`[${new Date().toLocaleTimeString()}] ${event.data.message}`, ...prev].slice(0, 10));
             }
         };
-        navigator.serviceWorker.addEventListener('message', handleSWMessage);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', handleSWMessage);
+        }
 
         return () => {
             clearTimeout(timer);
             clearInterval(interval);
-            navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+            }
         };
     }, []);
 
@@ -200,8 +211,9 @@ const Setup = ({ onLogout }) => {
         fetchData();
     }, []);
 
-    const handleDeleteTrap = async (id, name) => {
-        if (window.confirm(`Möchten Sie die Falle "${name}" wirklich löschen?`)) {
+    const handleDeleteTrap = async (id, name, event) => {
+        event.stopPropagation(); // Prevent opening detail modal
+        if (window.confirm(`Möchten Sie den TrapSensor "${name}" wirklich löschen?`)) {
             try {
                 const token = localStorage.getItem('token');
                 const baseUrl = '';
@@ -211,6 +223,7 @@ const Setup = ({ onLogout }) => {
                 });
                 if (response.ok) {
                     setTraps(traps.filter(t => t.id !== id));
+                    if (selectedTrap && selectedTrap.id === id) setSelectedTrap(null);
                 } else {
                     const errorData = await response.json();
                     console.error('Löschen fehlgeschlagen:', response.status, errorData);
@@ -219,6 +232,90 @@ const Setup = ({ onLogout }) => {
             } catch (error) {
                 console.error('Fehler beim Löschen:', error);
             }
+        }
+    };
+
+    const handleShareTrap = async (e) => {
+        e.preventDefault();
+        if (!shareEmail) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/traps/${selectedTrap.id}/share`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ email: shareEmail })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setShareEmail('');
+                alert('TrapSensor erfolgreich geteilt!');
+                fetchShares(selectedTrap.id);
+            } else {
+                alert(`Fehler: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Share error:', error);
+            alert('Verbindungsfehler beim Teilen.');
+        }
+    };
+
+    const handleUnshareTrap = async (userId) => {
+        if (!confirm('Zugriff für diesen Nutzer wirklich entfernen?')) return;
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/traps/${selectedTrap.id}/share/${userId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                fetchShares(selectedTrap.id);
+            } else {
+                alert('Fehler beim Entfernen der Freigabe.');
+            }
+        } catch (error) {
+            console.error('Unshare error:', error);
+        }
+    };
+
+    const fetchShares = async (trapId) => {
+        setLoadingShares(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/traps/${trapId}/shares`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                setTrapShares(await response.json());
+            } else {
+                // If 403, maybe not owner, but that's handled by backend.
+                // If just shared with me permission, I cannot see other shares usually, or depends on logic.
+                // If I am just a viewer, backend returns 403 for /shares.
+                setTrapShares([]);
+            }
+        } catch (error) {
+            console.error('Fetch shares error:', error);
+            setTrapShares([]);
+        } finally {
+            setLoadingShares(false);
+        }
+    };
+
+    const openTrapDetail = (trap) => {
+        setSelectedTrap(trap);
+        // Only fetch shares if I am the owner (userId matches). Determine simple check or try fetch.
+        // If query fails (403), we know we are not owner.
+        // We can check currentUser.id === trap.userId if available.
+        if (currentUser && trap.userId === currentUser.id) {
+            fetchShares(trap.id);
+        } else {
+            setTrapShares([]);
         }
     };
 
@@ -504,32 +601,7 @@ const Setup = ({ onLogout }) => {
                     </div>
                 </section>
 
-                {/* Token Section for Simulator */}
-                <section>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Entwickler / Simulator</label>
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div
-                            onClick={() => {
-                                const token = localStorage.getItem('token');
-                                navigator.clipboard.writeText(token);
-                                setStatusMessage({ text: 'Token in Zwischenablage kopiert! ✅', type: 'success' });
-                                setTimeout(() => setStatusMessage({ text: '', type: '' }), 3000);
-                            }}
-                            className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600">
-                                    <Settings size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">API-Token kopieren</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Für MQTT-Simulator & Debugging</p>
-                                </div>
-                            </div>
-                            <ChevronRight size={18} className="text-gray-300" />
-                        </div>
-                    </div>
-                </section>
+
 
                 {/* Account Section */}
                 <section>
@@ -576,37 +648,158 @@ const Setup = ({ onLogout }) => {
 
                 {/* Trap Management Section */}
                 <section>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Fallen Verwalten</label>
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">TrapSensor Verwalten</label>
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden text-center">
                         {loading ? (
-                            <div className="p-8 text-center text-gray-400 text-sm italic">Lade Fallen...</div>
+                            <div className="p-8 text-center text-gray-400 text-sm italic">Lade TrapSensor...</div>
                         ) : traps.length === 0 ? (
-                            <div className="p-8 text-center text-gray-400 text-sm italic">Keine Fallen gefunden.</div>
+                            <div className="p-8 text-center text-gray-400 text-sm italic">Keine TrapSensor gefunden.</div>
                         ) : (
                             <div className="divide-y divide-gray-50">
                                 {traps.map(trap => (
-                                    <div key={trap.id} className="p-4 flex items-center justify-between">
+                                    <div
+                                        key={trap.id}
+                                        onClick={() => openTrapDetail(trap)}
+                                        className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer group"
+                                    >
                                         <div className="flex items-center space-x-4">
-                                            <div className="bg-gray-50 p-2.5 rounded-2xl text-gray-400">
+                                            <div className="bg-gray-50 p-2 rounded-xl text-gray-400">
                                                 <div className={`w-3 h-3 rounded-full ${trap.status === 'triggered' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : trap.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
                                             </div>
-                                            <div>
+                                            <div className="text-left">
                                                 <p className="text-sm font-bold text-gray-900">{trap.name}</p>
                                                 <p className="text-[10px] text-gray-400 font-medium">{trap.location || 'Kein Standort'}</p>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleDeleteTrap(trap.id, trap.name)}
-                                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openTrapDetail(trap);
+                                                }}
+                                                className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                                                title="Freigeben"
+                                            >
+                                                <User size={18} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleDeleteTrap(trap.id, trap.name, e)}
+                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                title="Löschen"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
                 </section>
+
+
+
+                {/* Trap Details & Share Modal */}
+                {selectedTrap && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-md p-4"
+                        onClick={() => setSelectedTrap(null)}
+                    >
+                        <div
+                            className="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="text-xl font-black text-gray-900">{selectedTrap.name}</h3>
+                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{selectedTrap.location || 'Kein Standort'}</p>
+                                </div>
+                                <button onClick={() => setSelectedTrap(null)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* Basic Info */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-4 rounded-2xl">
+                                        <div className="text-[10px] uppercase font-black text-gray-400 mb-1">Status</div>
+                                        <div className={`font-bold ${selectedTrap.status === 'active' ? 'text-green-600' : 'text-gray-900'}`}>
+                                            {selectedTrap.status === 'active' ? 'Aktiv' : selectedTrap.status === 'triggered' ? 'Ausgelöst' : 'Inaktiv'}
+                                        </div>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-2xl">
+                                        <div className="text-[10px] uppercase font-black text-gray-400 mb-1">IMEI</div>
+                                        <div className="font-mono text-sm font-bold text-gray-900 truncate" title={selectedTrap.imei}>{selectedTrap.imei}</div>
+                                    </div>
+                                </div>
+
+                                {/* Sharing Section */}
+                                <div className="border-t border-gray-100 pt-6">
+                                    <h4 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+                                        <User size={18} className="text-gray-400" />
+                                        <span>TrapSensor teilen</span>
+                                    </h4>
+
+                                    {currentUser && selectedTrap.userId === currentUser.id ? (
+                                        <>
+                                            <p className="text-xs text-gray-500 mb-4">
+                                                Geben Sie eine E-Mail-Adresse ein, um diesen TrapSensor mit einem anderen Benutzer zu teilen.
+                                            </p>
+
+                                            <form onSubmit={handleShareTrap} className="flex space-x-2 mb-6">
+                                                <input
+                                                    type="email"
+                                                    placeholder="E-Mail Adresse"
+                                                    className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-green-500 transition-colors"
+                                                    value={shareEmail}
+                                                    onChange={(e) => setShareEmail(e.target.value)}
+                                                    required
+                                                />
+                                                <button type="submit" className="bg-black text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors">
+                                                    Teilen
+                                                </button>
+                                            </form>
+
+                                            <div className="space-y-3">
+                                                <div className="text-[10px] uppercase font-black text-gray-400">Bereits geteilt mit:</div>
+                                                {loadingShares ? (
+                                                    <div className="text-sm text-gray-400 italic">Lade Freigaben...</div>
+                                                ) : trapShares.length === 0 ? (
+                                                    <div className="text-sm text-gray-400 italic">Noch mit niemandem geteilt.</div>
+                                                ) : (
+                                                    trapShares.map(share => (
+                                                        <div key={share.userId} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-400 text-xs font-bold border border-gray-100">
+                                                                    {share.email.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs font-bold text-gray-900">{share.email}</div>
+                                                                    <div className="text-[10px] text-gray-400">Lesezugriff</div>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleUnshareTrap(share.userId)}
+                                                                className="text-red-400 hover:text-red-600 p-2"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-xs font-medium">
+                                            ⚠️ Sie können diesen TrapSensor nicht teilen, da Sie nicht der Besitzer sind.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* App Installation Section */}
                 <section>
@@ -662,139 +855,180 @@ const Setup = ({ onLogout }) => {
                                 </div>
                             </div>
                         </div>
-                        <div className="p-4 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-gray-100 p-2.5 rounded-2xl text-gray-400">
-                                    <Shield size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">PWA Status</p>
-                                    <p className={`text-[10px] font-bold ${swStatus.includes('Aktiv') ? 'text-green-600' : 'text-red-500'}`}>{swStatus}</p>
-                                </div>
-                            </div>
+                    </div>
+                </section>
+
+                <section>
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div
+                            onClick={() => setShowDebug(!showDebug)}
+                            className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 cursor-pointer">
+                                Entwickleroptionen & Debug
+                            </label>
+                            <ChevronRight size={18} className={`text-gray-300 transition-transform ${showDebug ? 'rotate-90' : ''}`} />
                         </div>
-                        <div className="p-4 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
-                            <div className="flex items-center space-x-4">
-                                <div className={`p-2.5 rounded-2xl ${notifPermission === 'granted' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                    <Info size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">Berechtigung</p>
-                                    <p className="text-[10px] font-bold uppercase tracking-tight">
-                                        {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Ungeklärt'}
-                                    </p>
-                                </div>
-                            </div>
-                            {notifPermission !== 'granted' && (
-                                <button
-                                    onClick={handleRequestPermission}
-                                    className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100 active:scale-95 transition-all"
-                                >
-                                    Anfordern
-                                </button>
-                            )}
-                        </div>
-                        <div className="p-4 flex flex-col space-y-2 border-t border-gray-50 bg-amber-50/20">
-                            <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black text-amber-800 uppercase italic">Debug-Kontext:</span>
-                                <span className="text-[10px] font-mono text-amber-600">{window.location.origin}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[10px] text-gray-500">Controller:</span>
-                                <span className={`text-[10px] font-bold ${navigator.serviceWorker?.controller ? 'text-green-600' : 'text-red-500'}`}>
-                                    {navigator.serviceWorker?.controller ? 'Aktiv / Verbunden' : 'Gezielt (Neu laden!)'}
-                                </span>
-                            </div>
-                            {swLogs.length > 0 && (
-                                <div className="mt-2 p-2 bg-black/5 rounded-lg font-mono text-[9px] text-gray-600 space-y-1">
-                                    <div className="font-bold border-b border-black/5 pb-1 mb-1">Live SW-Logs:</div>
-                                    {swLogs.map((log, i) => (
-                                        <div key={i} className={log.includes('FEHLER') ? 'text-red-600' : log.includes('Erfolg') ? 'text-green-600' : ''}>
-                                            {log}
+
+                        {showDebug && (
+                            <div className="border-t border-gray-50">
+                                <div className="p-4 flex items-center justify-between">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-gray-100 p-2.5 rounded-2xl text-gray-400">
+                                            <Shield size={20} />
                                         </div>
-                                    ))}
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">PWA Status</p>
+                                            <p className={`text-[10px] font-bold ${swStatus.includes('Aktiv') ? 'text-green-600' : 'text-red-500'}`}>{swStatus}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                                <div className="p-4 flex items-center justify-between border-t border-gray-50">
+                                    <div className="flex items-center space-x-4">
+                                        <div className={`p-2.5 rounded-2xl ${notifPermission === 'granted' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                            <Info size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Berechtigung</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-tight">
+                                                {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Ungeklärt'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {notifPermission !== 'granted' && (
+                                        <button
+                                            onClick={handleRequestPermission}
+                                            className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100 active:scale-95 transition-all"
+                                        >
+                                            Anfordern
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="p-4 flex flex-col space-y-2 border-t border-gray-50 bg-amber-50/20">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-black text-amber-800 uppercase italic">Debug-Kontext:</span>
+                                        <span className="text-[10px] font-mono text-amber-600">{window.location.origin}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] text-gray-500">Controller:</span>
+                                        <span className={`text-[10px] font-bold ${navigator.serviceWorker?.controller ? 'text-green-600' : 'text-red-500'}`}>
+                                            {navigator.serviceWorker?.controller ? 'Aktiv / Verbunden' : 'Gezielt (Neu laden!)'}
+                                        </span>
+                                    </div>
+                                    {swLogs.length > 0 && (
+                                        <div className="mt-2 p-2 bg-black/5 rounded-lg font-mono text-[9px] text-gray-600 space-y-1">
+                                            <div className="font-bold border-b border-black/5 pb-1 mb-1">Live SW-Logs:</div>
+                                            {swLogs.map((log, i) => (
+                                                <div key={i} className={log.includes('FEHLER') ? 'text-red-600' : log.includes('Erfolg') ? 'text-green-600' : ''}>
+                                                    {log}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
 
 
-                        <div
-                            onClick={testConnection}
-                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-blue-50 p-2.5 rounded-2xl text-blue-600">
-                                    <Shield size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">Server-Verbindung</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Klicken zum Testen</p>
-                                </div>
-                            </div>
-                            <ChevronRight size={18} className="text-gray-300" />
-                        </div>
-                        <div
-                            onClick={handleLocalTest}
-                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-amber-50 group transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600 group-hover:bg-amber-100">
-                                    <Shield size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">SW Test-Notiz</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Testet via Service Worker</p>
+                                <div
+                                    onClick={() => {
+                                        const token = localStorage.getItem('token');
+                                        navigator.clipboard.writeText(token);
+                                        setStatusMessage({ text: 'Token in Zwischenablage kopiert! ✅', type: 'success' });
+                                        setTimeout(() => setStatusMessage({ text: '', type: '' }), 3000);
+                                    }}
+                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600">
+                                            <Settings size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">API-Token kopieren</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Für MQTT-Simulator & Debugging</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300" />
                                 </div>
 
-                            </div>
-                            <ChevronRight size={18} className="text-gray-300" />
-                        </div>
-                        <div
-                            onClick={handleMainThreadTest}
-                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-purple-50 group transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-purple-50 p-2.5 rounded-2xl text-purple-600 group-hover:bg-purple-100">
-                                    <Shield size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">Direct Test-Notiz</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Testet via System-Interface</p>
-                                </div>
+                                <div
+                                    onClick={testConnection}
+                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-blue-50 p-2.5 rounded-2xl text-blue-600">
 
+                                            <Shield size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Server-Verbindung</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Klicken zum Testen</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300" />
+                                </div>
+                                <div
+                                    onClick={handleLocalTest}
+                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-amber-50 group transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600 group-hover:bg-amber-100">
+                                            <Shield size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">SW Test-Notiz</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Testet via Service Worker</p>
+                                        </div>
+
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300" />
+                                </div>
+                                <div
+                                    onClick={handleMainThreadTest}
+                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-purple-50 group transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-purple-50 p-2.5 rounded-2xl text-purple-600 group-hover:bg-purple-100">
+                                            <Shield size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Direct Test-Notiz</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Testet via System-Interface</p>
+                                        </div>
+
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300" />
+                                </div>
+                                <div
+                                    onClick={handleManualRegister}
+                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-green-50 group transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-green-50 p-2.5 rounded-2xl text-green-600 group-hover:bg-green-100">
+                                            <Settings size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">SW manuell starten</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Erzwingt Registrierung (Mobile Fix)</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300" />
+                                </div>
+                                <div
+                                    onClick={handleForceCleanup}
+                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-red-50 group transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-100">
+                                            <Trash2 size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">SW Fehler beheben</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Bereinigt & Repariert App-Cache</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300" />
+                                </div>
                             </div>
-                            <ChevronRight size={18} className="text-gray-300" />
-                        </div>
-                        <div
-                            onClick={handleManualRegister}
-                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-green-50 group transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-green-50 p-2.5 rounded-2xl text-green-600 group-hover:bg-green-100">
-                                    <Settings size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">SW manuell starten</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Erzwingt Registrierung (Mobile Fix)</p>
-                                </div>
-                            </div>
-                            <ChevronRight size={18} className="text-gray-300" />
-                        </div>
-                        <div
-                            onClick={handleForceCleanup}
-                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-red-50 group transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-100">
-                                    <Trash2 size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">SW Fehler beheben</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Bereinigt & Repariert App-Cache</p>
-                                </div>
-                            </div>
-                            <ChevronRight size={18} className="text-gray-300" />
-                        </div>
+                        )}
                     </div>
                 </section>
 

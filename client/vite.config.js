@@ -36,6 +36,7 @@ export default defineConfig({
       filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg'],
+      manifestFilename: 'manifest.webmanifest', // Explicitly set it
       manifest: {
         name: 'TrapSensor Professional',
         short_name: 'TrapSensor',

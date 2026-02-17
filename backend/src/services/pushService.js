@@ -29,22 +29,30 @@ const sendPushNotification = async (trap, type, subscription) => {
     const payload = JSON.stringify({
         title: type === 'ALARM' ? '🚨 FANG-ALARM!' : '⚠️ System-Info',
         body: type === 'ALARM'
-            ? `Falle "${trap.name}" hat ausgelöst! Standort: ${trap.location}`
-            : `Falle "${trap.name}" meldet niedrigen Batteriestand (${trap.batteryPercent}%)`,
-        icon: '/vite.svg',
+            ? `Falle "${trap.name}" hat ausgelöst!`
+            : `Batterie bei "${trap.name}" niedrig.`,
         data: {
-            url: `/trap/${trap.id}`
+            url: `/trap/${trap.id}`,
+            t: Date.now()
         }
     });
 
     try {
-        await webpush.sendNotification(subscription, payload);
+        console.log(`Push Service: Sending to endpoint: ${subscription.endpoint.substring(0, 40)}...`);
+        console.log(`Push Service: Payload: ${payload}`);
+
+        const result = await webpush.sendNotification(subscription, payload);
+        console.log(`Push Service: Success! Status Code: ${result.statusCode}`);
 
         if (type === 'LOW_BATTERY') {
             await trap.update({ lastBatteryAlert: new Date() });
         }
     } catch (err) {
-        console.error('Push Error:', err);
+        console.error('Push Service: ❌ Error during webpush.sendNotification:', err);
+        if (err.statusCode === 410 || err.statusCode === 404) {
+            console.warn('Push Service: ⚠️ Subscription expired or no longer valid. Cleaning up...');
+            // Ideally delete from DB here
+        }
     }
 };
 

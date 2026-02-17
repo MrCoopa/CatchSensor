@@ -10,7 +10,7 @@ async function simulate() {
         console.log('DB Connected.');
 
         // 1. Find a trap
-        const trap = await Trap.findOne();
+        const trap = await Trap.findOne({ where: { imei: '78978746854546' } });
         if (!trap) {
             console.error('❌ No traps found in DB!');
             process.exit(1);
@@ -19,7 +19,7 @@ async function simulate() {
         console.log(`🎯 Targeting Trap: ${trap.name} (IMEI: ${trap.imei})`);
 
         // 2. Connect to MQTT
-        const client = mqtt.connect('mqtt://localhost');
+        const client = mqtt.connect('mqtt://127.0.0.1');
 
         client.on('connect', () => {
             console.log('✅ MQTT Connected.');

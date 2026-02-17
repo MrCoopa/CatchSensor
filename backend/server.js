@@ -34,22 +34,13 @@ const fs = require('fs');
 
 dotenv.config();
 
-// Load SSL Certs
-let server;
-try {
-    const options = {
-        key: fs.readFileSync('server.key'),
-        cert: fs.readFileSync('server.crt')
-    };
-    server = https.createServer(options, app);
-    console.log('Server running in HTTPS mode 🔒');
-} catch (e) {
-    console.error('SSL Certs missing! Falling back to HTTP (or generate them).', e);
-    const http = require('http');
-    server = http.createServer(app);
-}
+// For local development, HTTP is easier (avoids mobile SSL warnings)
+// Since the PWA uses the "insecure origin" chrome flag, HTTP is fine.
+const server = http.createServer(app);
+console.log('Server running in HTTP mode 🌐');
 
-const io = require('socket.io')(server, {
+const { Server } = require('socket.io');
+const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
@@ -65,12 +56,26 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Embedded MQTT Broker (Aedes)
-const aedes = require('aedes')();
-const { createServer } = require('aedes-server-factory');
+const { Aedes } = require('aedes');
+const aedes = new Aedes();
+const aedesServerFactory = require('aedes-server-factory');
+
+// Aedes event logging for deep debug
+aedes.on('client', (client) => {
+    console.log(`MQTT Broker: New Client detected: ${client ? client.id : 'unknown'}`);
+});
+aedes.on('subscribe', (subs, client) => {
+    console.log(`MQTT Broker: Client ${client ? client.id : 'unknown'} subscribed to ${subs.map(s => s.topic).join(', ')}`);
+});
+aedes.on('publish', (packet, client) => {
+    if (client) console.log(`MQTT Broker: Client ${client.id} published on ${packet.topic}`);
+});
+
 const setupEmbeddedBroker = () => {
-    const mqttServer = createServer(aedes);
+    const mqttServer = aedesServerFactory.createServer(aedes);
+    mqttServer.on('error', (err) => console.error('MQTT Server Error:', err));
     mqttServer.listen(1883, '0.0.0.0', () => {
-        console.log('✅ Embedded MQTT Broker running on port 1883');
+        console.log('✅ Embedded MQTT Broker running on 0.0.0.0:1883');
     });
     return aedes;
 };
@@ -78,9 +83,9 @@ const setupEmbeddedBroker = () => {
 // Start Background Services
 console.log('--- Services Initialization ---');
 try {
-    setupEmbeddedBroker(); // Start Broker
-    setupMQTT(io);
-    console.log('Services: MQTT setup initiated.');
+    const brokerInstance = setupEmbeddedBroker(); // Start Broker
+    setupMQTT(io, brokerInstance); // Pass aedes instance directly
+    console.log('Services: MQTT setup initiated with Direct Ingestion.');
     setupWatchdog(io);
     console.log('Services: Watchdog setup initiated.');
 } catch (err) {
@@ -96,12 +101,14 @@ app.use((req, res, next) => {
     next();
 });
 const path = require('path');
-// Serve icons from local public folder
+// Serve static files from public folder
+app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/icons', express.static(path.join(__dirname, 'public/icons')));
 
-// Attach io to req for routes
+// Attach io and aedes to req for routes
 app.use((req, res, next) => {
     req.io = io;
+    req.aedes = aedes; // Attach aedes for direct publishing
     next();
 });
 
@@ -121,7 +128,7 @@ app.get('/', (req, res) => {
             </style>
         </head>
         <body class="bg-[#f9fafb] text-slate-900 min-h-screen flex flex-col items-center p-6 sm:p-12">
-            <div class="max-w-4xl w-full space-y-8">
+            <div class="max-w-5xl w-full space-y-8">
                 <header class="flex items-start justify-between mb-12">
                     <div class="flex items-start space-x-6">
                         <img 
@@ -147,6 +154,11 @@ app.get('/', (req, res) => {
 
                 <div class="bg-[#1b3a2e] text-white rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
                     <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
+                        <div class="text-center md:text-left">
+                            <h2 class="text-4xl font-black mb-2" id="total-users">0</h2>
+                            <p class="text-white/60 font-medium uppercase tracking-widest text-xs">Benutzer</p>
+                        </div>
+                        <div class="w-px h-12 bg-white/10 hidden md:block"></div>
                         <div class="text-center md:text-left">
                             <h2 class="text-4xl font-black mb-2" id="total-traps">0</h2>
                             <p class="text-white/60 font-medium uppercase tracking-widest text-xs">Registrierte Fallen</p>
@@ -211,6 +223,7 @@ app.get('/', (req, res) => {
                             </div>
                         \`;
 
+                        document.getElementById('total-users').innerText = data.stats.totalUsers;
                         document.getElementById('total-traps').innerText = data.stats.totalTraps;
                         document.getElementById('total-readings').innerText = data.stats.totalReadings;
                         document.getElementById('server-uptime').innerText = Math.floor(data.server.uptime / 60) + 'm ' + Math.floor(data.server.uptime % 60) + 's';
@@ -231,6 +244,7 @@ app.get('/', (req, res) => {
 
 app.get('/api/status', async (req, res) => {
     try {
+        const userCount = await User.count();
         const trapCount = await Trap.count();
         const readingCount = await Reading.count();
         res.json({
@@ -246,6 +260,7 @@ app.get('/api/status', async (req, res) => {
                 watchdog: 'active'
             },
             stats: {
+                totalUsers: userCount,
                 totalTraps: trapCount,
                 totalReadings: readingCount
             },
@@ -259,17 +274,44 @@ app.get('/api/status', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/traps', protect, trapRoutes);
+// The /simulate route is inside trapRoutes, but we want it public
+app.use('/api/traps', (req, res, next) => {
+    if (req.path === '/simulate') return next();
+    return protect(req, res, next);
+}, trapRoutes);
 app.use('/api/readings', protect, readingRoutes);
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 
 // Socket.io connection handling
+const jwt = require('jsonwebtoken');
+
+io.use((socket, next) => {
+    if (socket.handshake.auth && socket.handshake.auth.token) {
+        jwt.verify(socket.handshake.auth.token, process.env.JWT_SECRET || 'fallback_secret', (err, decoded) => {
+            if (err) return next(new Error('Authentication error'));
+            socket.userId = decoded.id;
+            next();
+        });
+    } else {
+        next(new Error('Authentication error'));
+    }
+});
+
 io.on('connection', (socket) => {
-    console.log(`Socket: Client connected (${socket.id}) from ${socket.handshake.address}`);
+    console.log(`Socket: Client connected (${socket.id}) User: ${socket.userId}`);
+
+    // Join user-specific room
+    if (socket.userId) {
+        const roomName = `user_${socket.userId}`;
+        socket.join(roomName);
+        console.log(`Socket: User [${socket.userId}] joined room [${roomName}]`);
+    }
+
     socket.on('disconnect', (reason) => {
         console.log(`Socket: Client disconnected (${socket.id}). Reason: ${reason}`);
     });
 });
+
 
 // Sync database and start server
 async function startServer() {
@@ -277,7 +319,7 @@ async function startServer() {
         await sequelize.authenticate();
         console.log('Database connection established.');
 
-        await sequelize.sync({ alter: true });
+        await sequelize.sync();
         console.log('Database models synced.');
 
         const PORT = process.env.PORT || 5000;

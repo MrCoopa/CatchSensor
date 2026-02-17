@@ -36,14 +36,43 @@ const Dashboard = ({ onLogout }) => {
         }
     };
 
+    // Helper to get current user ID
+    const getCurrentUserId = () => {
+        const token = localStorage.getItem('token');
+        if (!token) return null;
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.id;
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const currentUserId = getCurrentUserId();
+
     useEffect(() => {
         fetchTraps();
-        const socket = io(baseUrl);
+
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const socket = io(baseUrl, {
+            auth: {
+                token: token
+            }
+        });
+
+        socket.on('connect_error', (err) => {
+            console.error('Socket Authentication Error:', err.message);
+        });
+
         socket.on('trap_update', (updatedTrap) => {
+            console.log('Socket: Received update for trap:', updatedTrap.id);
             setTraps(prevTraps =>
                 prevTraps.map(trap => trap.id === updatedTrap.id ? updatedTrap : trap)
             );
         });
+
         const handleOpenModal = () => setIsAddModalOpen(true);
         window.addEventListener('open-add-trap', handleOpenModal);
 
@@ -97,6 +126,7 @@ const Dashboard = ({ onLogout }) => {
                             <TrapCard
                                 key={trap.id}
                                 trap={trap}
+                                isShared={trap.userId !== currentUserId}
                                 onViewHistory={(t) => setSelectedTrap(t)}
                             />
                         ))}

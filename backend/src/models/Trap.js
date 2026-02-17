@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const TrapShare = require('./TrapShare'); // Circular dependency handling might be needed, but let's try direct require first or association init later
 
 const Trap = sequelize.define('Trap', {
     id: {
@@ -58,6 +59,21 @@ const Trap = sequelize.define('Trap', {
 }, {
     tableName: 'TrapSensors',
     timestamps: true,
+    indexes: [
+        {
+            unique: true,
+            fields: ['imei']
+        },
+        {
+            fields: ['userId']
+        },
+        {
+            fields: ['status']
+        }
+    ]
 });
+
+Trap.hasMany(TrapShare, { foreignKey: 'trapId' });
+TrapShare.belongsTo(Trap, { foreignKey: 'trapId' });
 
 module.exports = Trap;

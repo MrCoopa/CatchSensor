@@ -42,6 +42,14 @@ const Reading = sequelize.define('Reading', {
     }
 }, {
     timestamps: false,
+    indexes: [
+        {
+            fields: ['trapId']
+        },
+        {
+            fields: ['timestamp']
+        }
+    ]
 });
 
 Trap.hasMany(Reading, { foreignKey: 'trapId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
