@@ -123,8 +123,8 @@ app.use((req, res, next) => {
 
 // Middleware to handle SPA/PWA routing (serves index.html for non-API GET requests)
 app.use((req, res, next) => {
-    // Only handle GET requests that don't start with /api and aren't root
-    if (req.method !== 'GET' || req.url.startsWith('/api') || req.url === '/') {
+    // Only handle GET requests that don't start with /api, aren't /status, and aren't root
+    if (req.method !== 'GET' || req.url.startsWith('/api') || req.url === '/status' || req.url === '/') {
         return next();
     }
 
@@ -135,14 +135,10 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get('/', (req, res) => {
-    // If a built frontend exists, we don't show the system status at /
-    // Instead the express.static above would have served index.html.
-    // If not, we show the system status page.
+// Dedicated route for the Backend/System Status Dashboard
+app.get('/status', (req, res) => {
+    // Generate the status page HTML (same as before)
     const indexFile = path.join(__dirname, '../client/dist/index.html');
-    if (fs.existsSync(indexFile)) {
-        return res.sendFile(indexFile);
-    }
     res.send(`
         <!DOCTYPE html>
         <html lang="de">
