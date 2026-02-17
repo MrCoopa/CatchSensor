@@ -107,6 +107,13 @@ const path = require('path');
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/icons', express.static(path.join(__dirname, 'public/icons')));
 
+// If a frontend build exists in 'client/dist', serve it
+const clientBuildPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientBuildPath)) {
+    console.log('Production: Serving frontend build from client/dist');
+    app.use(express.static(clientBuildPath));
+}
+
 // Attach io and aedes to req for routes
 app.use((req, res, next) => {
     req.io = io;
@@ -114,7 +121,28 @@ app.use((req, res, next) => {
     next();
 });
 
+// Wildcard route to handle SPA/PWA (only if it's NOT an API call)
+app.get('*', (req, res, next) => {
+    // If it's an API call, don't serve the index.html
+    if (req.url.startsWith('/api') || req.url === '/') {
+        return next();
+    }
+
+    const indexFile = path.join(__dirname, '../client/dist/index.html');
+    if (fs.existsSync(indexFile)) {
+        return res.sendFile(indexFile);
+    }
+    next();
+});
+
 app.get('/', (req, res) => {
+    // If a built frontend exists, we don't show the system status at /
+    // Instead the express.static above would have served index.html.
+    // If not, we show the system status page.
+    const indexFile = path.join(__dirname, '../client/dist/index.html');
+    if (fs.existsSync(indexFile)) {
+        return res.sendFile(indexFile);
+    }
     res.send(`
         <!DOCTYPE html>
         <html lang="de">
