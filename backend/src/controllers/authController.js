@@ -8,7 +8,7 @@ const generateToken = (id) => {
 };
 
 const registerUser = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, name, password } = req.body;
 
     try {
         const userExists = await User.findOne({ where: { email } });
@@ -19,6 +19,7 @@ const registerUser = async (req, res) => {
 
         const user = await User.create({
             email,
+            name,
             password,
         });
 
@@ -26,6 +27,7 @@ const registerUser = async (req, res) => {
             res.status(201).json({
                 id: user.id,
                 email: user.email,
+                name: user.name,
                 token: generateToken(user.id),
             });
         }
@@ -87,9 +89,34 @@ const getMe = async (req, res) => {
     }
 };
 
+const updateProfile = async (req, res) => {
+    try {
+        const { pushoverAppKey, pushoverUserKey } = req.body;
+        const user = await User.findByPk(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        user.pushoverAppKey = pushoverAppKey;
+        user.pushoverUserKey = pushoverUserKey;
+        await user.save();
+        res.json({
+            message: 'Profile updated successfully',
+            user: {
+                email: user.email,
+                pushoverAppKey: user.pushoverAppKey,
+                pushoverUserKey: user.pushoverUserKey
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
 module.exports = {
     registerUser,
     loginUser,
     getMe,
     changePassword,
+    updateProfile,
 };
+

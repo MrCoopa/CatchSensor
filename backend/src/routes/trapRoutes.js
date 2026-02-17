@@ -1,6 +1,8 @@
 const express = require('express');
 const Trap = require('../models/Trap');
+const LoraMetadata = require('../models/LoraMetadata');
 const router = express.Router();
+
 
 // Get all traps for the logged-in user (owned + shared)
 router.get('/', async (req, res) => {
@@ -21,8 +23,12 @@ router.get('/', async (req, res) => {
                     { userId: req.user.id }, // Owned traps
                     { id: { [Op.in]: sharedTrapIds } } // Shared traps
                 ]
-            }
+            },
+            include: [{ model: LoraMetadata, as: 'lorawanTrapSensor' }]
+
         });
+
+
         res.json(traps);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -32,27 +38,58 @@ router.get('/', async (req, res) => {
 // Create a new trap assigned to the logged-in user
 router.post('/', async (req, res) => {
     try {
-        const { name, location, imei } = req.body;
+        const { name, alias, location, imei, deviceId, type = 'NB-IOT' } = req.body;
+        const identifier = (type === 'LORAWAN' ? deviceId : imei);
 
         // Basic validation
-        if (!name || !imei) {
-            return res.status(400).json({ error: 'Name und IMEI sind erforderlich' });
+        if (!name && !alias) return res.status(400).json({ error: 'Name/Alias ist erforderlich' });
+        if (!identifier) return res.status(400).json({ error: `${type === 'LORAWAN' ? 'Device ID' : 'IMEI'} ist erforderlich` });
+
+        // Check if trap already exists
+        let existingTrap = await Trap.findOne({
+            where: {
+                [type === 'LORAWAN' ? 'deviceId' : 'imei']: identifier
+            }
+        });
+
+        if (existingTrap) {
+            // Case A: Trap exists and is already owned (Bound)
+            if (existingTrap.userId) {
+                return res.status(400).json({ error: 'Diese Kennung (IMEI/DeviceID) ist bereits registriert und einem anderen Benutzer zugewiesen.' });
+            }
+
+            // Case B: Trap exists but is unbound (Auto-provisioned) -> CLAIM IT
+            console.log(`Trap Claiming: User ${req.user.id} is claiming unbound trap ${identifier}`);
+            existingTrap.name = name || alias;
+            existingTrap.alias = alias || name;
+            existingTrap.location = location;
+            existingTrap.userId = req.user.id;
+            existingTrap.type = type; // Ensure type is correct
+
+            await existingTrap.save();
+            return res.status(200).json(existingTrap);
         }
 
+        // Case C: Trap does not exist -> Create new
         const newTrap = await Trap.create({
-            name,
+            name: name || alias,
+            alias: alias || name,
             location,
-            imei,
+            imei: type === 'NB-IOT' ? identifier : null,
+            deviceId: type === 'LORAWAN' ? identifier : null,
+            type,
             userId: req.user.id
         });
         res.status(201).json(newTrap);
     } catch (error) {
+        console.error('Trap Creation Error:', error);
         if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({ error: 'Diese IMEI ist bereits registriert' });
+            return res.status(400).json({ error: 'Diese Kennung ist bereits registriert.' });
         }
         res.status(500).json({ error: error.message });
     }
 });
+
 
 // Update trap status
 router.patch('/:id/status', async (req, res) => {

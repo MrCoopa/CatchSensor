@@ -20,6 +20,10 @@ const Setup = ({ onLogout }) => {
     const [shareEmail, setShareEmail] = useState('');
     const [trapShares, setTrapShares] = useState([]);
     const [loadingShares, setLoadingShares] = useState(false);
+    const [pushoverAppKey, setPushoverAppKey] = useState('');
+    const [pushoverUserKey, setPushoverUserKey] = useState('');
+
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
 
 
 
@@ -197,7 +201,13 @@ const Setup = ({ onLogout }) => {
                 return;
             }
 
-            if (userRes.ok) setCurrentUser(await userRes.json());
+            if (userRes.ok) {
+                const userData = await userRes.json();
+                setCurrentUser(userData);
+                setPushoverAppKey(userData.pushoverAppKey || '');
+                setPushoverUserKey(userData.pushoverUserKey || '');
+            }
+
             if (trapsRes.ok) setTraps(await trapsRes.json());
 
         } catch (error) {
@@ -210,6 +220,36 @@ const Setup = ({ onLogout }) => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const handleUpdateProfile = async () => {
+        setIsSavingProfile(true);
+        setStatusMessage({ text: '', type: '' });
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/auth/update-profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ pushoverAppKey, pushoverUserKey })
+
+            });
+
+            if (res.ok) {
+                setStatusMessage({ text: 'Profil erfolgreich aktualisiert!', type: 'success' });
+                // Re-fetch to confirm
+                fetchData();
+            } else {
+                setStatusMessage({ text: 'Fehler beim Speichern des Profils.', type: 'error' });
+            }
+        } catch (error) {
+            console.error('Update profile error:', error);
+            setStatusMessage({ text: 'Verbindungsfehler.', type: 'error' });
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
 
     const handleDeleteTrap = async (id, name, event) => {
         event.stopPropagation(); // Prevent opening detail modal
@@ -631,10 +671,49 @@ const Setup = ({ onLogout }) => {
                             </div>
                             <ChevronRight size={18} className="text-gray-300" />
                         </div>
+
+                        {/* Pushover Config Row */}
+                        <div className="p-4 space-y-4">
+                            <div className="flex items-center space-x-4">
+                                <div className="bg-orange-50 p-2.5 rounded-2xl text-orange-600">
+                                    <Info size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-gray-900">Pushover Integration</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Zusätzliche Alarme am Handy</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <input
+                                    type="text"
+                                    placeholder="Pushover Application Key (Token)..."
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-orange-500 transition-colors"
+                                    value={pushoverAppKey}
+                                    onChange={(e) => setPushoverAppKey(e.target.value)}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Pushover User Key..."
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-orange-500 transition-colors"
+                                    value={pushoverUserKey}
+                                    onChange={(e) => setPushoverUserKey(e.target.value)}
+                                />
+                                <button
+                                    onClick={handleUpdateProfile}
+                                    disabled={isSavingProfile}
+                                    className={`w-full py-3 bg-black text-white text-xs font-black rounded-xl hover:bg-gray-800 transition-all ${isSavingProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {isSavingProfile ? 'Speichere...' : 'Pushover Keys Speichern'}
+                                </button>
+                            </div>
+                        </div>
+
+
                         <button
                             onClick={onLogout}
                             className="w-full text-left p-4 flex items-center justify-between hover:bg-red-50 transition-colors group"
                         >
+
                             <div className="flex items-center space-x-4">
                                 <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-100">
                                     <LogOut size={20} />
@@ -667,9 +746,15 @@ const Setup = ({ onLogout }) => {
                                                 <div className={`w-3 h-3 rounded-full ${trap.status === 'triggered' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : trap.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-sm font-bold text-gray-900">{trap.name}</p>
-                                                <p className="text-[10px] text-gray-400 font-medium">{trap.location || 'Kein Standort'}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-bold text-gray-900">{trap.alias || trap.name}</p>
+                                                    <span className={`text-[8px] font-black px-1 py-0.5 rounded-md border ${trap.type === 'LORAWAN' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                                        {trap.type || 'NB-IOT'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-gray-400 font-medium">{trap.type === 'LORAWAN' ? trap.deviceId : trap.imei}</p>
                                             </div>
+
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <button
@@ -729,9 +814,12 @@ const Setup = ({ onLogout }) => {
                                         </div>
                                     </div>
                                     <div className="bg-gray-50 p-4 rounded-2xl">
-                                        <div className="text-[10px] uppercase font-black text-gray-400 mb-1">IMEI</div>
-                                        <div className="font-mono text-sm font-bold text-gray-900 truncate" title={selectedTrap.imei}>{selectedTrap.imei}</div>
+                                        <div className="text-[10px] uppercase font-black text-gray-400 mb-1">{selectedTrap.type === 'LORAWAN' ? 'Device ID' : 'IMEI'}</div>
+                                        <div className="font-mono text-sm font-bold text-gray-900 truncate" title={selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}>
+                                            {selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}
+                                        </div>
                                     </div>
+
                                 </div>
 
                                 {/* Sharing Section */}

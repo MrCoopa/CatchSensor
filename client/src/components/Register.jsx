@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, UserPlus } from 'lucide-react';
+import { Mail, Lock, ArrowRight, UserPlus, User } from 'lucide-react';
 
 const Register = ({ onRegister, onSwitchToLogin }) => {
     const [email, setEmail] = useState('');
+    const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
@@ -24,12 +25,13 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email, name, password }),
             });
             const data = await response.json();
             if (response.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('userEmail', data.email);
+                localStorage.setItem('userName', data.name || '');
                 onRegister(data);
             } else {
                 setError(data.message || 'Registrierung fehlgeschlagen');
@@ -72,6 +74,20 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-4 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none transition-all"
                                 placeholder="name@beispiel.de"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Name (Optional)</label>
+                        <div className="relative">
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-4 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none transition-all"
+                                placeholder="Ihr Name"
                             />
                         </div>
                     </div>

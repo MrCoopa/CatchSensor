@@ -3,16 +3,27 @@ import { X, Camera } from 'lucide-react';
 import QRScanner from './QRScanner';
 
 const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
-    const [formData, setFormData] = useState({ name: '', location: '', imei: '' });
+    const [formData, setFormData] = useState({
+        name: '',
+        location: '',
+        imei: '',
+        deviceId: '',
+        type: 'NB-IOT'
+    });
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [error, setError] = useState('');
 
     if (!isOpen) return null;
 
-    const handleScan = (imei) => {
-        setFormData({ ...formData, imei });
+    const handleScan = (code) => {
+        if (formData.type === 'LORAWAN') {
+            setFormData({ ...formData, deviceId: code });
+        } else {
+            setFormData({ ...formData, imei: code });
+        }
         setIsScannerOpen(false);
     };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -30,8 +41,9 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
             if (response.ok) {
                 const newTrap = await response.json();
                 onAdd(newTrap);
-                setFormData({ name: '', location: '', imei: '' });
+                setFormData({ name: '', location: '', imei: '', deviceId: '', type: 'NB-IOT' });
                 onClose();
+
             } else {
                 const data = await response.json();
                 setError(data.error || 'Fehler beim Speichern');
@@ -59,17 +71,36 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Device Type Selector */}
+                    <div className="flex bg-gray-50 p-1 rounded-2xl mb-6">
+                        <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, type: 'NB-IOT' })}
+                            className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${formData.type === 'NB-IOT' ? 'bg-[#1b3a2e] text-white shadow-md' : 'text-gray-400'}`}
+                        >
+                            NB-IOT
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, type: 'LORAWAN' })}
+                            className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${formData.type === 'LORAWAN' ? 'bg-[#1b3a2e] text-white shadow-md' : 'text-gray-400'}`}
+                        >
+                            LORAWAN
+                        </button>
+                    </div>
+
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Name</label>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Name / Alias</label>
                         <input
                             required
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none transition-all"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-[#1b3a2e]/20 outline-none transition-all"
                             placeholder="z.B. Wiesenkante Süd"
                         />
                     </div>
+
 
                     <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Standort (optional)</label>
@@ -83,14 +114,17 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">IMEI / ID</label>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                            {formData.type === 'LORAWAN' ? 'Device ID' : 'IMEI'}
+                        </label>
                         <div className="relative">
                             <input
+                                required
                                 type="text"
-                                value={formData.imei}
-                                onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-green-700 outline-none"
-                                placeholder="Scan oder Code eingeben"
+                                value={formData.type === 'LORAWAN' ? formData.deviceId : formData.imei}
+                                onChange={(e) => setFormData({ ...formData, [formData.type === 'LORAWAN' ? 'deviceId' : 'imei']: e.target.value })}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-[#1b3a2e]/20 outline-none"
+                                placeholder={formData.type === 'LORAWAN' ? 'z.B. eui-70b3d5...' : '15-stellige IMEI'}
                             />
                             <button
                                 type="button"
@@ -101,6 +135,7 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
                             </button>
                         </div>
                     </div>
+
 
                     {isScannerOpen && (
                         <QRScanner

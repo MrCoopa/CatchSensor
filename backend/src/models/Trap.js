@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const TrapShare = require('./TrapShare'); // Circular dependency handling might be needed, but let's try direct require first or association init later
+const TrapShare = require('./TrapShare');
 
 const Trap = sequelize.define('Trap', {
     id: {
@@ -8,38 +8,57 @@ const Trap = sequelize.define('Trap', {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
     },
-    name: {
+    name: { // Keeping 'name' for backward compatibility in codebase, but using 'alias' as the main field
         type: DataTypes.STRING,
         allowNull: false,
+    },
+    alias: {
+        type: DataTypes.STRING,
+        allowNull: true,
     },
     location: {
         type: DataTypes.STRING,
         allowNull: true,
     },
+    type: {
+        type: DataTypes.ENUM('NB-IOT', 'LORAWAN'),
+        defaultValue: 'NB-IOT',
+    },
+    // NB-IoT Identifiers
     imei: {
         type: DataTypes.STRING,
         unique: true,
+        allowNull: true,
     },
+    // LoRaWAN Identifiers
+    deviceId: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: true,
+    },
+    // Unified Telemetry
     status: {
         type: DataTypes.ENUM('active', 'inactive', 'triggered'),
         defaultValue: 'inactive',
     },
     batteryVoltage: {
-        type: DataTypes.INTEGER, // in mV (e.g., 3700)
+        type: DataTypes.INTEGER, // Always in mV
         allowNull: true,
     },
     batteryPercent: {
-        type: DataTypes.INTEGER, // 0-100
-        allowNull: true,
-    },
-    signalStrength: {
-        type: DataTypes.INTEGER, // 0-4 bars
+        type: DataTypes.INTEGER,
         allowNull: true,
     },
     rssi: {
-        type: DataTypes.INTEGER, // Absolute value (e.g., 95 for -95dBm)
+        type: DataTypes.INTEGER, // Shared/NB RSSI
         allowNull: true,
     },
+    lastSeen: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
+
+    // Alerting & Throttling
     batteryThreshold: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -48,28 +67,23 @@ const Trap = sequelize.define('Trap', {
         type: DataTypes.DATE,
         allowNull: true,
     },
-    lastReading: {
+    lastOfflineAlert: {
         type: DataTypes.DATE,
         allowNull: true,
     },
     userId: {
         type: DataTypes.UUID,
-        allowNull: true, // Allow null for existing traps or MQTT ingest
+        allowNull: true,
     }
 }, {
     tableName: 'TrapSensors',
     timestamps: true,
     indexes: [
-        {
-            unique: true,
-            fields: ['imei']
-        },
-        {
-            fields: ['userId']
-        },
-        {
-            fields: ['status']
-        }
+        { unique: true, fields: ['imei'] },
+        { unique: true, fields: ['deviceId'] },
+        { fields: ['userId'] },
+        { fields: ['type'] },
+        { fields: ['status'] }
     ]
 });
 

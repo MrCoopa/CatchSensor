@@ -47,7 +47,7 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                     </button>
                 </div>
 
-                {trap.lastReading && (
+                {trap.lastSeen && (
                     <div className="grid grid-cols-2 gap-4 mb-8">
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
@@ -55,21 +55,51 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                             </div>
                             <div className="text-lg font-bold text-gray-900">{((trap.batteryVoltage || 0) / 1000).toFixed(1).replace('.', ',')} V</div>
                         </div>
-                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col justify-center">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <SignalIndicator rssi={trap.rssi} className="mr-2" /> Signal
+                                <SignalIndicator rssi={trap.type === 'LORAWAN' ? trap.lorawanTrapSensor?.loraRssi : trap.rssi} className="mr-2" /> Signal
                             </div>
-                            <div className="text-lg font-bold text-gray-900">-{trap.rssi || 0} dBm</div>
+                            <div className="flex flex-col">
+                                <div className="text-lg font-bold text-gray-900 leading-none">{trap.type === 'LORAWAN' ? (trap.lorawanTrapSensor?.loraRssi || 0) : (trap.rssi || 0)} dBm</div>
+                                {trap.lorawanTrapSensor && (
+                                    <div className="grid grid-cols-2 gap-2 mt-2 p-2 bg-white/50 rounded-lg border border-gray-100">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] uppercase text-gray-400 font-bold">SNR</span>
+                                            <span className="text-[10px] font-bold text-gray-700">{trap.lorawanTrapSensor.snr} dB</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] uppercase text-gray-400 font-bold">SF</span>
+                                            <span className="text-[10px] font-bold text-gray-700">SF{trap.lorawanTrapSensor.spreadingFactor}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] uppercase text-gray-400 font-bold">Gateways</span>
+                                            <span className="text-[10px] font-bold text-gray-700">{trap.lorawanTrapSensor.gatewayCount || 1}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] uppercase text-gray-400 font-bold">fCnt</span>
+                                            <span className="text-[10px] font-bold text-gray-700">{trap.lorawanTrapSensor.fCnt || 0}</span>
+                                        </div>
+                                        {trap.lorawanTrapSensor.gatewayId && (
+                                            <div className="flex flex-col col-span-2">
+                                                <span className="text-[8px] uppercase text-gray-400 font-bold">Last Gateway</span>
+                                                <span className="text-[9px] font-bold text-gray-700 truncate">{trap.lorawanTrapSensor.gatewayId}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
+
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Verlauf</h4>
                     <div className="space-y-4">
                         {readings.map((reading) => (
                             <div key={reading.id} className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100/50">
-                                <div className="flex justify-between items-center mb-4">
+                                {/* Header: Status & Date */}
+                                <div className="flex justify-between items-center mb-3">
                                     <p className={`font-black text-xs tracking-widest uppercase ${reading.status === 'triggered' ? 'text-red-600' : 'text-green-600'}`}>
                                         {reading.status === 'triggered' ? '⚡ FANG!' : '✔️ AKTIV'}
                                     </p>
@@ -78,20 +108,62 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                                     </p>
                                 </div>
 
-                                <div className="flex items-center space-x-8">
-                                    {/* Batterie */}
-                                    <div className="flex items-center space-x-2">
+                                {/* Unified Row: Battery -> RSSI -> Metadata */}
+                                <div className="flex items-center gap-4 w-full">
+
+                                    {/* 1. Battery (Fixed Width) */}
+                                    <div className="flex items-center space-x-2 shrink-0">
                                         <BatteryIndicator percentage={reading.batteryPercent || 0} />
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-black text-gray-700 leading-none">{reading.batteryPercent || 0}%</span>
-                                            <span className="text-[9px] text-gray-400 font-medium">{((reading.value || 0) / 1000).toFixed(1).replace('.', ',')} V</span>
+                                            <span className="text-[12px] font-black text-gray-700 leading-none">{reading.batteryPercent || 0}%</span>
+                                            <span className="text-[10px] text-gray-400 font-medium">{((reading.value || 0) / 1000).toFixed(1).replace('.', ',')} V</span>
                                         </div>
                                     </div>
 
-                                    {/* Signal */}
-                                    <div className="flex items-center space-x-2 border-l border-gray-200 pl-6">
-                                        <SignalIndicator rssi={reading.rssi} />
-                                        <span className="text-[11px] font-black text-gray-500 leading-none">-{reading.rssi || 0} dBm</span>
+                                    {/* 2. Scrollable Metadata Stream (Takes remaining width) */}
+                                    <div className="flex flex-1 items-center gap-3 overflow-x-auto custom-scrollbar pb-1">
+                                        {/* Signal (RSSI) */}
+                                        <div className="flex items-center space-x-2 shrink-0">
+                                            <SignalIndicator rssi={reading.rssi} />
+                                            <span className="text-[12px] font-black text-gray-500 leading-none">{reading.rssi || 0} dBm</span>
+                                        </div>
+
+                                        {/* Extended Metadata */}
+                                        {(reading.snr !== undefined || reading.spreadingFactor) && (
+                                            <>
+                                                {reading.snr !== undefined && (
+                                                    <div className="flex items-center bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm shrink-0">
+                                                        <span className="text-[8px] uppercase text-gray-400 font-bold mr-1">SNR</span>
+                                                        <span className="text-[10px] font-bold text-gray-700">{Number(reading.snr).toFixed(1)}</span>
+                                                    </div>
+                                                )}
+                                                {reading.spreadingFactor && (
+                                                    <div className="flex items-center bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm shrink-0">
+                                                        <span className="text-[8px] uppercase text-gray-400 font-bold mr-1">SF</span>
+                                                        <span className="text-[10px] font-bold text-gray-700">{reading.spreadingFactor}</span>
+                                                    </div>
+                                                )}
+                                                {reading.gatewayCount !== undefined && (
+                                                    <div className="flex items-center bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm shrink-0">
+                                                        <span className="text-[8px] uppercase text-gray-400 font-bold mr-1">GW</span>
+                                                        <span className="text-[10px] font-bold text-gray-700">{reading.gatewayCount}</span>
+                                                    </div>
+                                                )}
+                                                {reading.fCnt !== undefined && (
+                                                    <div className="flex items-center bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm shrink-0">
+                                                        <span className="text-[8px] uppercase text-gray-400 font-bold mr-1">F-CNT</span>
+                                                        <span className="text-[10px] font-bold text-gray-700">{reading.fCnt}</span>
+                                                    </div>
+                                                )}
+                                                {reading.gatewayId && (
+                                                    <div className="flex items-center bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm max-w-[100px] shrink-0">
+                                                        <span className="text-[10px] font-bold text-gray-700 truncate w-full" title={reading.gatewayId}>
+                                                            {reading.gatewayId}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>

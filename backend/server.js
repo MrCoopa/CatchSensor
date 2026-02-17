@@ -9,6 +9,8 @@ const Trap = require('./src/models/Trap');
 const Reading = require('./src/models/Reading');
 const User = require('./src/models/User');
 const PushSubscription = require('./src/models/PushSubscription');
+const LoraMetadata = require('./src/models/LoraMetadata');
+
 
 // Associations
 User.hasMany(Trap, { foreignKey: 'userId' });
@@ -60,22 +62,22 @@ const { Aedes } = require('aedes');
 const aedes = new Aedes();
 const aedesServerFactory = require('aedes-server-factory');
 
-// Aedes event logging for deep debug
-aedes.on('client', (client) => {
-    console.log(`MQTT Broker: New Client detected: ${client ? client.id : 'unknown'}`);
-});
-aedes.on('subscribe', (subs, client) => {
-    console.log(`MQTT Broker: Client ${client ? client.id : 'unknown'} subscribed to ${subs.map(s => s.topic).join(', ')}`);
-});
-aedes.on('publish', (packet, client) => {
-    if (client) console.log(`MQTT Broker: Client ${client.id} published on ${packet.topic}`);
-});
+// Aedes event logging (Commented out for production)
+// aedes.on('client', (client) => {
+//     console.log(`MQTT Broker: New Client detected: ${client ? client.id : 'unknown'}`);
+// });
+// aedes.on('subscribe', (subs, client) => {
+//     console.log(`MQTT Broker: Client ${client ? client.id : 'unknown'} subscribed to ${subs.map(s => s.topic).join(', ')}`);
+// });
+// aedes.on('publish', (packet, client) => {
+//     if (client) console.log(`MQTT Broker: Client ${client.id} published on ${packet.topic}`);
+// });
 
 const setupEmbeddedBroker = () => {
     const mqttServer = aedesServerFactory.createServer(aedes);
     mqttServer.on('error', (err) => console.error('MQTT Server Error:', err));
-    mqttServer.listen(1883, '0.0.0.0', () => {
-        console.log('✅ Embedded MQTT Broker running on 0.0.0.0:1883');
+    mqttServer.listen(1884, '0.0.0.0', () => {
+        console.log('✅ Embedded MQTT Broker running on 0.0.0.0:1884');
     });
     return aedes;
 };

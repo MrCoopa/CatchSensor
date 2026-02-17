@@ -17,7 +17,12 @@ const User = sequelize.define('User', {
             isEmail: true,
         },
     },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
     password: {
+
         type: DataTypes.STRING,
         allowNull: false,
     },
@@ -25,7 +30,16 @@ const User = sequelize.define('User', {
         type: DataTypes.ENUM('user', 'admin'),
         defaultValue: 'user',
     },
+    pushoverAppKey: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    pushoverUserKey: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    }
 }, {
+
     hooks: {
         beforeSave: async (user) => {
             if (user.changed('password')) {

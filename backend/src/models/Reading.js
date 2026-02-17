@@ -39,7 +39,13 @@ const Reading = sequelize.define('Reading', {
     timestamp: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
-    }
+    },
+    // LoRaWAN Specific Metadata (Copied from LoraMetadata for history)
+    snr: { type: DataTypes.FLOAT, allowNull: true },
+    gatewayId: { type: DataTypes.STRING, allowNull: true },
+    gatewayCount: { type: DataTypes.INTEGER, allowNull: true },
+    fCnt: { type: DataTypes.INTEGER, allowNull: true },
+    spreadingFactor: { type: DataTypes.INTEGER, allowNull: true }
 }, {
     timestamps: false,
     indexes: [

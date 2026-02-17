@@ -20,6 +20,7 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
             if (response.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('userEmail', data.email);
+                localStorage.setItem('userName', data.name || '');
                 onLogin(data);
             } else {
                 setError(data.message || 'Login fehlgeschlagen');

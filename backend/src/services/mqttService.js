@@ -4,187 +4,296 @@ const Reading = require('../models/Reading');
 const User = require('../models/User');
 const TrapShare = require('../models/TrapShare');
 const PushSubscription = require('../models/PushSubscription');
+const LoraMetadata = require('../models/LoraMetadata');
 const { sendPushNotification } = require('./pushService');
+const { sendUnifiedNotification } = require('./notificationService');
 
 const setupMQTT = (io, aedes) => {
-    // 1. Direct Ingestion (Bypasses network, highly reliable)
+    // 1. Path A: Internal NB-IoT Broker (Aedes)
     if (aedes) {
-        console.log('MQTT: ✅ Direct Ingestion active (Aedes Internal)');
+        console.log('MQTT: ✅ Internal NB-IoT Broker active (Aedes)');
         aedes.on('publish', async (packet, client) => {
-            // Only process topics starting with 'traps/' and ending with '/data'
+            if (packet.topic.startsWith('$SYS')) return; // Ignore system topics
+            console.log(`MQTT: 📥 Internal Broker received publish on: ${packet.topic}`);
             if (packet.topic && packet.topic.startsWith('traps/') && packet.topic.endsWith('/data')) {
-                // Internal aedes.publish packets have topic and payload
-                handleMQTTMessage(packet.topic, packet.payload, io);
+                handleMQTTMessage(packet.topic, packet.payload, io, 'NB-IOT');
             }
         });
     }
 
-    // 2. External Brokers (Optional)
-    const brokers = [];
+    // 2. Path B: External NB-IoT Broker (Optional)
+    if (process.env.NBIOT_MQTT_BROKER) {
+        connectToBroker({
+            name: 'External NB-IoT',
+            url: `mqtt://${process.env.NBIOT_MQTT_BROKER}`,
+            port: process.env.NBIOT_MQTT_PORT || 1883,
+            username: process.env.NBIOT_MQTT_USER,
+            password: process.env.NBIOT_MQTT_PASS,
+            topic: process.env.NBIOT_MQTT_TOPIC || 'traps/+/data'
+        }, (topic, payload) => handleMQTTMessage(topic, payload, io, 'NB-IOT'));
+    }
 
-    brokers.forEach(broker => {
-        const client = mqtt.connect(broker.url, {
-            protocolVersion: 4,
-            connectTimeout: 5000,
-            family: 4
+    // 3. Path C: LoRaWAN via TTN (External MQTT Broker)
+    if (process.env.TTN_MQTT_USER) {
+        const ttnPort = process.env.TTN_MQTT_PORT || 1883;
+        const protocol = ttnPort == 8883 ? 'mqtts' : 'mqtt';
+
+        connectToBroker({
+            name: 'LoRaWAN (TTN)',
+            url: `${protocol}://${process.env.TTN_MQTT_BROKER || 'eu1.cloud.thethings.network'}`,
+            port: ttnPort,
+            username: process.env.TTN_MQTT_USER,
+            password: process.env.TTN_MQTT_PASS,
+            topic: '#' // Use wildcard as specific topics are being rejected
+        }, (topic, payload) => {
+            if (topic.endsWith('/up')) {
+                handleMQTTMessage(topic, payload, io, 'LORAWAN');
+            }
         });
-
-        client.on('connect', () => {
-            console.log(`MQTT: ✅ Successfully connected to EXTERNAL broker: ${broker.name}`);
-            client.subscribe('traps/+/data');
-        });
-
-        client.on('message', (topic, message) => {
-            handleMQTTMessage(topic, message, io);
-        });
-    });
-};
-
-const handleMQTTMessage = async (topic, message, io) => {
-    try {
-        if (message.length === 4) {
-            const status = message[0] === 0x00 ? 'triggered' : 'active';
-            const voltage = message.readUInt16BE(1);
-            const rssi = message[3];
-            const batteryPercent = Math.min(100, Math.max(0, ((voltage - 3200) / (4200 - 3200)) * 100));
-
-            const deviceId = topic.split('/')[1];
-            console.log(`MQTT INGEST: Device [${deviceId}] -> Status: ${status}, V: ${voltage}mV, RSSI: ${rssi}`);
-
-            await updateTrapData(deviceId, {
-                status,
-                batteryVoltage: voltage,
-                batteryPercent: Math.round(batteryPercent),
-                signalStrength: normalizeRSSI(rssi),
-                rssi: Math.abs(rssi),
-                value: voltage,
-                type: 'vibration'
-            }, io);
-        }
-    } catch (err) {
-        console.error('MQTT Handle Error:', err);
     }
 };
 
-const normalizeRSSI = (rssi) => {
-    const absRSSI = Math.abs(rssi);
-    if (absRSSI <= 75) return 4;
-    if (absRSSI <= 90) return 3;
-    if (absRSSI <= 100) return 2;
-    if (absRSSI <= 110) return 1;
-    return 0;
+const connectToBroker = (config, onMessage) => {
+    console.log(`MQTT: Connecting to ${config.name} Broker: ${config.url}`);
+    const client = mqtt.connect(config.url, {
+        port: config.port,
+        username: config.username,
+        password: config.password,
+    });
+
+    client.on('connect', () => {
+        console.log(`MQTT: ✅ Connected to ${config.name} Broker`);
+        client.subscribe(config.topic, (err) => {
+            if (err) console.error(`MQTT: Failed to subscribe to ${config.topic}`, err);
+            else console.log(`MQTT: Subscribed to ${config.topic}`);
+        });
+    });
+
+    client.on('packetreceive', (packet) => {
+        if (packet.cmd === 'publish') {
+            console.log(`MQTT: DEBUG - Packet received on topic: ${packet.topic}`);
+        }
+    });
+
+    client.on('message', (topic, payload) => {
+        console.log(`MQTT: Received message on ${config.name} topic: ${topic}`);
+        onMessage(topic, payload);
+    });
+
+    client.on('error', (err) => {
+        console.error(`MQTT ${config.name} Error:`, err);
+    });
+
+    return client;
 };
 
-const trapCache = new Map(); // Cache for Trap Lookups (IMEI -> {trap, userId, timestamp})
-const CACHE_TTL = 5 * 60 * 1000; // 5 Minutes
+
+const handleMQTTMessage = async (topic, payload, io, pathType) => {
+    try {
+        let normalizedData = null;
+        let deviceId = null;
+
+        if (pathType === 'NB-IOT') {
+            // Path A: NB-IoT Binary (4 Bytes)
+            // Payload format: [Status (1), Voltage (2), RSSI (1)]
+            if (payload.length < 4) return;
+
+            deviceId = topic.split('/')[1];
+            const statusByte = payload.readUInt8(0);
+            const voltage = payload.readUInt16BE(1);
+            const rssi = payload.readUInt8(3);
+
+            normalizedData = {
+                type: 'NB-IOT',
+                status: statusByte === 0x01 ? 'active' : 'triggered',
+                batteryVoltage: voltage,
+                batteryPercent: Math.min(100, Math.max(0, Math.floor((voltage - 3300) / 9))), // Approx mapping
+                rssi: -rssi,
+                lastReading: new Date()
+            };
+        } else if (pathType === 'LORAWAN') {
+            // Path B: LoRaWAN JSON (TTN Format)
+            const json = JSON.parse(payload.toString());
+            // console.log('MQTT: Raw LoRaWAN JSON:', JSON.stringify(json).substring(0, 1000));
+
+
+            // Handle both array-wrapped (simulate) and single-object (real) JSON
+            const data = Array.isArray(json) ? json[0] : (json.data || json);
+            if (!data.end_device_ids) return;
+
+            deviceId = data.end_device_ids.device_id;
+            const uplink = data.uplink_message;
+            if (!uplink) return;
+
+            console.log(`MQTT: Processing LoRaWAN Message for ${deviceId}`);
+
+            // Priority 1: Use Decoded Payload if available
+            let status = 'active';
+            let voltage = 0;
+            let batteryPercent = 0;
+
+            if (uplink.decoded_payload) {
+                const dp = uplink.decoded_payload;
+                const statusStr = (dp.status || '').toLowerCase();
+                status = (statusStr === 'triggered' || statusStr === 'closed') ? 'triggered' : 'active';
+
+                // Voltage can be in mV or V
+                voltage = dp.batteryVoltage > 100 ? dp.batteryVoltage : Math.round(dp.batteryVoltage * 1000);
+                batteryPercent = dp.batteryPercent || 0;
+            }
+            // Priority 2: Fallback to binary parsing of frm_payload if decoded_payload is missing or 0
+            else if (uplink.frm_payload) {
+                const buffer = Buffer.from(uplink.frm_payload, 'base64');
+                if (buffer.length >= 3) {
+                    const statusByte = buffer.readUInt8(0);
+                    // Use the 3-byte format seen in the dump: AQ39 -> 01 0d fd -> 3581mV
+                    // Or the 4-byte format seen in the other dump: AQzkUA== -> 01 0c e4 50 -> 3300mV 80%
+                    status = statusByte === 0x01 ? 'active' : 'triggered';
+                    voltage = buffer.readUInt16BE(1);
+                    if (buffer.length >= 4) {
+                        batteryPercent = buffer.readUInt8(3);
+                    } else {
+                        batteryPercent = Math.min(100, Math.max(0, Math.floor((voltage - 3300) / 9)));
+                    }
+                }
+            }
+
+            // Extract Metadata
+            const rssi = uplink.rx_metadata?.[0]?.rssi || 0;
+            const snr = uplink.rx_metadata?.[0]?.snr || 0;
+            const gatewayId = uplink.rx_metadata?.[0]?.gateway_ids?.gateway_id || 'unknown';
+            const gatewayCount = uplink.rx_metadata?.length || 1;
+            const fCnt = uplink.f_cnt || 0;
+            const sf = uplink.settings?.data_rate?.lora?.spreading_factor || 0;
+
+            normalizedData = {
+                deviceId,
+                type: 'LORAWAN',
+                status: status, // Standardized key
+                batteryPercent,
+                rssi,
+                snr,
+                gatewayId,
+                gatewayCount,
+                fCnt,
+                spreadingFactor: sf,
+                lastVoltage: voltage / 1000, // Still passed through
+                lastSeen: new Date()
+            };
+
+            // console.log(`MQTT: Normalized LoRaWAN Data for ${deviceId}:`, JSON.stringify(normalizedData, null, 2));
+        }
+
+
+
+        if (normalizedData && deviceId) {
+            await updateTrapData(deviceId, normalizedData, io);
+        }
+    } catch (err) {
+        console.error('MQTT Handler Error:', err);
+    }
+};
 
 const updateTrapData = async (deviceId, data, io) => {
-    let trap;
-    const now = Date.now();
-
-    // 1. Check Cache
-    if (trapCache.has(deviceId)) {
-        const cached = trapCache.get(deviceId);
-        if (now - cached.timestamp < CACHE_TTL) {
-            trap = cached.trap;
-            // console.log(`MQTT Cache: Hit for [${deviceId}]`);
-        } else {
-            trapCache.delete(deviceId); // Expired
-        }
-    }
-
-    // 2. Fetch from DB if not in cache
-    if (!trap) {
-        trap = await Trap.findOne({ where: { imei: deviceId } });
-        if (trap) {
-            trapCache.set(deviceId, { trap, timestamp: now });
-            // console.log(`MQTT Cache: Miss & Set for [${deviceId}]`);
-        }
-    }
-
-    if (!trap) {
-        console.log(`MQTT Logic: Trap with IMEI [${deviceId}] not found in database.`);
-        return;
-    }
-
-    const oldStatus = trap.status;
-    // console.log(`MQTT Logic: Updating Trap [${trap.name}] (${deviceId}). Old Status: ${oldStatus}, New Status: ${data.status}`);
-
-    // Update instance (this updates the object in memory/cache too if sequelize managed it well, but we reload effectively)
-    await trap.update({
-        status: data.status,
-        batteryVoltage: data.batteryVoltage,
-        batteryPercent: data.batteryPercent,
-        signalStrength: data.signalStrength,
-        rssi: data.rssi,
-        lastReading: new Date()
-    });
-
-    // Update cache timestamp on write to keep it fresh
-    trapCache.set(deviceId, { trap, timestamp: Date.now() });
-
-    if (trap.userId) {
-        // console.log(`MQTT Logic: Trap owned by User [${trap.userId}]. Checking push criteria...`);
-        if (data.status === 'triggered' && oldStatus !== 'triggered') {
-            console.log(`MQTT Logic: 🚨 TRIGGERED state detected for Trap [${trap.name}]! Calling triggerPush...`);
-            triggerPush(trap.userId, trap, 'ALARM');
-        } else if (data.batteryPercent < 20 && oldStatus >= 20) { // Simple debounce
-            console.log(`MQTT Logic: 🔋 LOW_BATTERY for Trap [${trap.name}]! Calling triggerPush...`);
-            triggerPush(trap.userId, trap, 'LOW_BATTERY');
-        }
-    } else {
-        // console.log(`MQTT Logic: Trap [${trap.name}] has no owner (userId is null). No push notification sent.`);
-    }
-
-    await Reading.create({
-        trapId: trap.id,
-        value: data.value,
-        type: data.type,
-        status: data.status,
-        batteryPercent: data.batteryPercent,
-        rssi: data.rssi
-    });
-
-    // Emit only to the specific user's room
-    // Emit to the owner's room
-    if (trap.userId) {
-        io.to(`user_${trap.userId}`).emit('trap_update', trap);
-    }
-
-    // Emit to shared users' rooms
     try {
-        const shares = await TrapShare.findAll({ where: { trapId: trap.id } });
-        shares.forEach(share => {
-            io.to(`user_${share.userId}`).emit('trap_update', trap);
-            // console.log(`MQTT Logic: Emitted update to SHARED user room [user_${share.userId}]`);
+        let trap = await Trap.findOne({
+            where: data.type === 'NB-IOT' ? { imei: deviceId } : { deviceId: deviceId },
+            include: data.type === 'LORAWAN' ? [{ model: LoraMetadata, as: 'lorawanTrapSensor' }] : []
         });
+
+        console.log(`MQTT: Search result for ${deviceId}: ${trap ? 'Found' : 'NOT FOUND'}`);
+
+        if (!trap) {
+            console.log(`MQTT: 🆕 Auto-provisioning new device: ${deviceId}`);
+            try {
+                trap = await Trap.create({
+                    name: `New Device ${deviceId}`,
+                    alias: deviceId,
+                    type: data.type,
+                    deviceId: data.type === 'LORAWAN' ? deviceId : null,
+                    imei: data.type === 'NB-IOT' ? deviceId : null,
+                    status: data.status,
+                    userId: null // Unbound
+                });
+                console.log(`MQTT: ✅ Created new trap: ${trap.id}`);
+            } catch (createErr) {
+                console.error('MQTT: Failed to auto-provision trap:', createErr);
+                return;
+            }
+        }
+
+        // 1. Update Core Fields
+        trap.type = data.type;
+
+        if (data.type === 'NB-IOT') {
+            trap.imei = deviceId;
+            trap.status = data.status;
+            trap.batteryVoltage = data.batteryVoltage;
+            trap.batteryPercent = data.batteryPercent;
+            trap.rssi = data.rssi;
+            trap.lastSeen = new Date();
+            await trap.save();
+        } else {
+            // LoRaWAN Unified
+            trap.deviceId = deviceId;
+            trap.status = data.status;
+            trap.batteryVoltage = Math.round(data.lastVoltage * 1000); // Normalize to mV
+            trap.batteryPercent = data.batteryPercent;
+            trap.lastSeen = data.lastSeen;
+
+            await trap.save();
+
+            // 2. Update Lora Metadata (lorawwanTrapSensor)
+            await LoraMetadata.upsert({
+                trapId: trap.id,
+                loraRssi: data.rssi,
+                snr: data.snr,
+                spreadingFactor: data.spreadingFactor,
+                gatewayId: data.gatewayId,
+                gatewayCount: data.gatewayCount || 1,
+                fCnt: data.fCnt || 0
+            });
+
+            // 3. Refetch to get the updated metadata object
+            trap = await Trap.findByPk(trap.id, {
+                include: [{ model: LoraMetadata, as: 'lorawanTrapSensor' }]
+            });
+        }
+
+
+        // Create Reading
+        await Reading.create({
+            trapId: trap.id,
+            value: data.batteryVoltage, // Store voltage in 'value'
+            type: data.status === 'triggered' ? 'alarm' : 'status',
+            status: data.status,
+            batteryPercent: data.batteryPercent,
+            rssi: data.rssi,
+            // Capture LoRaWAN metadata for this specific reading
+            snr: data.snr,
+            gatewayId: data.gatewayId,
+            gatewayCount: data.gatewayCount,
+            fCnt: data.fCnt,
+            spreadingFactor: data.spreadingFactor
+        });
+
+        // 3. Emit Socket Update
+        const roomName = `user_${trap.userId}`;
+        io.to(roomName).emit('trapUpdate', trap);
+        console.log(`MQTT: 📢 Emitted update for ${trap.name} (${deviceId}). Status: ${trap.status}, Batt: ${trap.batteryPercent}%`);
+
+
+        // 4. Send Notifications
+        if (trap.status === 'triggered') {
+            await sendUnifiedNotification(trap, 'ALARM', `Falle "${trap.alias || trap.name}" hat ausgelöst!`);
+        } else if (trap.batteryPercent !== null && trap.batteryPercent < 20) {
+            await sendUnifiedNotification(trap, 'LOW_BATTERY', `Batterie schwach bei "${trap.alias || trap.name}": ${trap.batteryPercent}%`);
+        }
+
     } catch (err) {
-        console.error('MQTT Logic: Error fetching shares for emission:', err);
+        console.error('UpdateTrapData Error:', err);
     }
 };
 
-async function triggerPush(userId, trap, type) {
-    try {
-        console.log(`Push Service: Looking for subscriptions for user [${userId}]...`);
-        const subscriptions = await PushSubscription.findAll({ where: { userId } });
-        console.log(`Push Service: Found ${subscriptions.length} subscriptions.`);
-
-        if (subscriptions.length > 0) {
-            console.log(`Push Service: Sending ${type} notification to ${subscriptions.length} devices...`);
-            for (const sub of subscriptions) {
-                const pushSubscription = {
-                    endpoint: sub.endpoint,
-                    keys: sub.keys
-                };
-                await sendPushNotification(trap, type, pushSubscription);
-            }
-            console.log(`Push Service: ✅ All notifications sent.`);
-        } else {
-            console.warn(`Push Service: ⚠️ No subscriptions found for user [${userId}]. User might need to enable push in their browser.`);
-        }
-    } catch (err) {
-        console.error('Push Service: ❌ Error during push trigger:', err);
-    }
-}
 
 module.exports = { setupMQTT };
