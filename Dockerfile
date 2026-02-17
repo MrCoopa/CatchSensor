@@ -2,7 +2,7 @@
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY client/ ./
 RUN npm run build
 
@@ -12,7 +12,7 @@ WORKDIR /app
 
 # Install Backend dependencies
 COPY package*.json ./
-RUN npm install --production
+RUN npm install --production --legacy-peer-deps
 
 # Copy Backend source
 COPY backend/ ./backend/
