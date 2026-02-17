@@ -339,12 +339,30 @@ io.on('connection', (socket) => {
 });
 
 
-// Sync database and start server
+// Sync database and start server (with retry logic for Docker cold-starts)
 async function startServer() {
-    try {
-        await sequelize.authenticate();
-        console.log('Database connection established.');
+    let authenticated = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    const delay = 3000; // 3 seconds
 
+    while (!authenticated && attempts < maxAttempts) {
+        try {
+            attempts++;
+            await sequelize.authenticate();
+            authenticated = true;
+            console.log('Database connection established.');
+        } catch (error) {
+            console.warn(`Database connection attempt ${attempts}/${maxAttempts} failed. Retrying in ${delay / 1000}s...`);
+            if (attempts >= maxAttempts) {
+                console.error('CRITICAL: Max database connection attempts reached. Shutting down.');
+                process.exit(1);
+            }
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    try {
         await sequelize.sync();
         console.log('Database models synced.');
 
@@ -357,7 +375,8 @@ async function startServer() {
             console.log('-----------------------');
         });
     } catch (error) {
-        console.error('CRITICAL: Unable to start server:', error);
+        console.error('CRITICAL: Unable to sync database or start server:', error);
+        process.exit(1);
     }
 }
 
