@@ -31,6 +31,7 @@ const { setupMQTT } = require('./src/services/mqttService');
 const { setupWatchdog } = require('./src/services/watchdogService');
 
 const app = express();
+app.set('trust proxy', 1); // Trust the first proxy (Nginx Proxy Manager)
 const https = require('https');
 const fs = require('fs');
 
