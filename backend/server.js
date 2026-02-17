@@ -122,7 +122,7 @@ app.use((req, res, next) => {
 });
 
 // Wildcard route to handle SPA/PWA (only if it's NOT an API call)
-app.get('*', (req, res, next) => {
+app.get('(.*)', (req, res, next) => {
     // If it's an API call, don't serve the index.html
     if (req.url.startsWith('/api') || req.url === '/') {
         return next();
