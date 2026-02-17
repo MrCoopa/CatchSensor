@@ -34,7 +34,7 @@ const Setup = ({ onLogout }) => {
             if ('Notification' in window) {
                 setNotifPermission(Notification.permission);
             }
-            if ('serviceWorker' in navigator) {
+            if (navigator.serviceWorker) {
                 try {
                     const regs = await navigator.serviceWorker.getRegistrations();
                     let statusParts = [`Regs: ${regs.length}`];
@@ -173,6 +173,10 @@ const Setup = ({ onLogout }) => {
 
     const handleForceCleanup = async () => {
         if (!confirm('Dies löscht alle Service Worker und setzt die Push-Verbindung zurück. Fortfahren?')) return;
+        if (!navigator.serviceWorker) {
+            setStatusMessage({ text: 'Service Worker nicht verfügbar (Insecure Origin?).', type: 'error' });
+            return;
+        }
         setStatusMessage({ text: 'Bereinige Service Worker...', type: '' });
         try {
             const regs = await navigator.serviceWorker.getRegistrations();
@@ -427,7 +431,7 @@ const Setup = ({ onLogout }) => {
     };
 
     const checkPushSubscription = async () => {
-        if ('serviceWorker' in navigator) {
+        if (navigator.serviceWorker) {
             const registration = await navigator.serviceWorker.ready;
             const subscription = await registration.pushManager.getSubscription();
             if (subscription) {
