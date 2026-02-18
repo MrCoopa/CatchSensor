@@ -27,9 +27,11 @@ Wenn du **Portainer** nutzt, darfst du den Code **nicht** einfach in den "Web Ed
 1. Klicke links auf **Stacks** und dann rechts auf den Button **+ Add stack**.
 2. Scrolle zu **Build method** (direkt unter dem Namen des Stacks).
 3. Dort findest du mehrere Kacheln/Buttons. Klicke auf **Repository**.
-4. Es erscheinen neue Felder. Gib bei **Repository URL** folgendes ein: `https://github.com/MrCoopa/TrapSensor.git`.
+4. Es erscheinen neue Felder:
+   - **Repository URL**: `https://github.com/MrCoopa/TrapSensor.git`
+   - **Repository reference**: Hier musst du zwingend **`refs/heads/docker`** (oder einfach nur **`docker`**) eingeben.
 5. Scrolle ganz nach unten und klicke auf **Deploy the stack**. 
-   *Portainer lädt nun alle Dateien selbstständig im Hintergrund.*
+   *Portainer lädt nun alle Dateien vom Docker-Branch selbstständig im Hintergrund.*
 
 ### 4. Verification
 - **Web UI**: Open `http://<your-server-ip>:5000` in your browser.
