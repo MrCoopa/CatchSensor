@@ -51,7 +51,9 @@ const sendPushNotification = async (catchSensor, type, subscription) => {
         console.error('Push Service: ❌ Error during webpush.sendNotification:', err);
         if (err.statusCode === 410 || err.statusCode === 404) {
             console.warn('Push Service: ⚠️ Subscription expired or no longer valid. Cleaning up...');
-            // Ideally delete from DB here
+            const PushSubscription = require('../models/PushSubscription');
+            await PushSubscription.destroy({ where: { endpoint: subscription.endpoint } });
+            console.log(`Push Service: ✅ Subscription deleted for endpoint: ${subscription.endpoint.substring(0, 30)}...`);
         }
     }
 };

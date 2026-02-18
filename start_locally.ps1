@@ -1,10 +1,17 @@
-$env:Path = "d:\CatchSensor\NodeJS;d:\CatchSensor\MariaDB\bin;" + $env:Path
+$env:Path = "d:\CatchSensor\NodeJS;D:\CatchSensor\mariadb_12.2.2\bin;" + $env:Path
 Write-Host "Starting CatchSensor Application Locally..." -ForegroundColor Cyan
 
 # Start MariaDB if NOT running
 if (!(Get-Process mysqld -ErrorAction SilentlyContinue)) {
-    Write-Host "Launching MariaDB..." -ForegroundColor Green
-    Start-Process -FilePath "d:\CatchSensor\MariaDB\bin\mysqld.exe" -ArgumentList "--defaults-file=d:\CatchSensor\MariaDB\data\my.ini", "--console" -NoNewWindow
+    Write-Host "Launching MariaDB (v12.2.2)..." -ForegroundColor Green
+    
+    # Ensure data directory exists
+    if (!(Test-Path "D:\CatchSensor\mariadb_12.2.2\data\Performance_schema")) {
+        Write-Host "Initializing Data Directory..." -ForegroundColor Yellow
+        Start-Process -FilePath "D:\CatchSensor\mariadb_12.2.2\bin\mysql_install_db.exe" -ArgumentList "--datadir=D:\CatchSensor\mariadb_12.2.2\data" -NoNewWindow -Wait
+    }
+    
+    Start-Process -FilePath "D:\CatchSensor\mariadb_12.2.2\bin\mysqld.exe" -ArgumentList "--console" -NoNewWindow
     Start-Sleep -Seconds 5
 }
 

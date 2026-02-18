@@ -1,7 +1,9 @@
+const path = require('path');
+const dotenv = require('dotenv');
+dotenv.config({ path: path.resolve(__dirname, '.env') }); // Explicitly load backend/.env
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const sequelize = require('./src/config/database');
 
 // Import Models
@@ -35,7 +37,7 @@ app.set('trust proxy', 1); // Trust the first proxy (Nginx Proxy Manager)
 const https = require('https');
 const fs = require('fs');
 
-dotenv.config();
+
 
 // For local development, HTTP is easier (avoids mobile SSL warnings)
 // Since the PWA uses the "insecure origin" chrome flag, HTTP is fine.
@@ -103,7 +105,7 @@ app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
-const path = require('path');
+
 // Serve static files from public folder
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/icons', express.static(path.join(__dirname, 'public/icons')));
@@ -303,7 +305,12 @@ app.get('/api/status', async (req, res) => {
 app.use('/api/auth', authRoutes);
 // The /simulate route is inside catchRoutes, but we want it public
 app.use('/api/catches', (req, res, next) => {
-    if (req.path === '/simulate') return next();
+    console.log(`Routing /api/catches: path=${req.path} method=${req.method}`);
+    if (req.path === '/simulate') {
+        console.log('Routing: Skipping protection for /simulate');
+        return next();
+    }
+    console.log('Routing: Applying protection');
     return protect(req, res, next);
 }, catchRoutes);
 app.use('/api/readings', protect, readingRoutes);

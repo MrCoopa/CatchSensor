@@ -82,8 +82,8 @@ const CatchSensor = sequelize.define('CatchSensor', {
     ]
 });
 
-CatchSensor.hasMany(CatchShare, { foreignKey: 'catchSensorId' });
-CatchShare.belongsTo(CatchSensor, { foreignKey: 'catchSensorId' });
+CatchSensor.hasMany(CatchShare, { foreignKey: 'catchSensorId', onDelete: 'CASCADE' });
+CatchShare.belongsTo(CatchSensor, { foreignKey: 'catchSensorId', onDelete: 'CASCADE' });
 
 module.exports = CatchSensor;
 

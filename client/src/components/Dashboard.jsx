@@ -11,12 +11,12 @@ const Dashboard = ({ onLogout }) => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedCatch, setSelectedCatch] = useState(null);
 
-    const baseUrl = '';
+    const baseUrl = ''; // kept for socket.io if needed, or remove if socket io also proxies
 
     const fetchCatches = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${baseUrl}/api/catches`, {
+            const response = await fetch('/api/catches', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -56,7 +56,8 @@ const Dashboard = ({ onLogout }) => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const socket = io(baseUrl, {
+        // Socket.io should also use relative path if proxied, or window.location.origin
+        const socket = io('/', {
             auth: {
                 token: token
             }
@@ -77,6 +78,9 @@ const Dashboard = ({ onLogout }) => {
         window.addEventListener('open-add-catch-sensor', handleOpenModal);
 
         return () => {
+            console.log('Dashboard: Cleaning up socket & listeners');
+            socket.off('connect_error');
+            socket.off('catchSensorUpdate');
             socket.disconnect();
             window.removeEventListener('open-add-catch-sensor', handleOpenModal);
         };

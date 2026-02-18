@@ -8,27 +8,21 @@ const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
 
     useEffect(() => {
         if (isOpen && catchSensor) {
-            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
-            const token = localStorage.getItem('token');
-            fetch(`${baseUrl}/api/readings/${catchSensor.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        setReadings(data);
-                    } else {
-                        console.error('Readings data is not an array:', data);
-                        setReadings([]);
-                    }
-                })
-                .catch(err => {
+            const fetchReadings = async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`/api/readings/${catchSensor.id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    setReadings(Array.isArray(data) ? data : []);
+                } catch (err) {
                     console.error('Error fetching readings:', err);
                     setReadings([]);
-                });
+                }
+            };
+            fetchReadings();
         }
     }, [isOpen, catchSensor]);
 

@@ -115,8 +115,13 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
             };
         } else if (pathType === 'LORAWAN') {
             // Path B: LoRaWAN JSON (TTN Format)
-            const json = JSON.parse(payload.toString());
-            // console.log('MQTT: Raw LoRaWAN JSON:', JSON.stringify(json).substring(0, 1000));
+            let json;
+            try {
+                json = JSON.parse(payload.toString());
+            } catch (pErr) {
+                console.error(`MQTT: Failed to parse LoRaWAN JSON on topic ${topic}:`, pErr.message);
+                return;
+            }
 
 
             // Handle both array-wrapped (simulate) and single-object (real) JSON
@@ -220,7 +225,7 @@ const updateCatchSensorData = async (deviceId, data, io) => {
                 });
                 console.log(`MQTT: ✅ Created new catch sensor: ${catchSensor.id}`);
             } catch (createErr) {
-                console.error('MQTT: Failed to auto-provision trap:', createErr);
+                console.error('MQTT: Failed to auto-provision catch sensor:', createErr);
                 return;
             }
         }

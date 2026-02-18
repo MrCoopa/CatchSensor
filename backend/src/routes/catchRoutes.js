@@ -35,6 +35,7 @@ router.get('/', async (req, res) => {
 
 // Create a new catch assigned to the logged-in user
 router.post('/', async (req, res) => {
+    console.log('POST /api/catches - Body:', req.body);
     try {
         const { name, alias, location, imei, deviceId, type = 'NB-IOT' } = req.body;
         const identifier = (type === 'LORAWAN' ? deviceId : imei);
@@ -88,8 +89,18 @@ router.post('/', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
+        const userId = req.user.id;
+        const { Op } = require('sequelize');
+        const CatchShare = require('../models/CatchShare');
+
         const catchSensor = await CatchSensor.findByPk(req.params.id);
         if (!catchSensor) return res.status(404).json({ error: 'Catch not found' });
+
+        // Check ownership or share
+        const share = await CatchShare.findOne({ where: { catchSensorId: req.params.id, userId } });
+        if (catchSensor.userId !== userId && !share) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
 
         catchSensor.status = status;
         await catchSensor.save();

@@ -194,12 +194,10 @@ const Setup = ({ onLogout }) => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const baseUrl = '';
-
             // Parallel fetch for user profile and catches list
             const [userRes, catchesRes] = await Promise.all([
-                fetch(`${baseUrl}/api/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${baseUrl}/api/catches`, { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('/api/catches', { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             if (userRes.status === 401 || catchesRes.status === 401) {
@@ -264,8 +262,7 @@ const Setup = ({ onLogout }) => {
         if (window.confirm(`Möchten Sie den CatchSensor "${name}" wirklich löschen?`)) {
             try {
                 const token = localStorage.getItem('token');
-                const baseUrl = '';
-                const response = await fetch(`${baseUrl}/api/catches/${id}`, {
+                const response = await fetch(`/api/catches/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -380,8 +377,7 @@ const Setup = ({ onLogout }) => {
 
         try {
             const token = localStorage.getItem('token');
-            const baseUrl = '';
-            const response = await fetch(`${baseUrl}/api/auth/change-password`, {
+            const response = await fetch('/api/auth/change-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -524,8 +520,7 @@ const Setup = ({ onLogout }) => {
     const testConnection = async () => {
         setStatusMessage({ text: 'Teste Verbindung...', type: '' });
         try {
-            const baseUrl = '';
-            const response = await fetch(`${baseUrl}/api/status`);
+            const response = await fetch('/api/status');
             if (response.ok) {
                 setStatusMessage({ text: 'Verbindung zum Server erfolgreich! ✅', type: 'success' });
             } else {

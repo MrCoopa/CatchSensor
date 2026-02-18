@@ -61,7 +61,7 @@ npm run dev
 ---
 
 ## 📄 Dokumentation
-Weitere technische Details finden Sie in der [interfaces.md](file:///d:/TrapSensor/TrapSensor/interfaces.md).
+Weitere technische Details finden Sie in der [interfaces.md](file:///d:/CatchSensor/CatchSensor/interfaces.md).
 
 ---
 *Entwickelt mit ❤️ für eine effiziente und zuverlässige Fallenjagd.*

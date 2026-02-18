@@ -11,6 +11,7 @@ const AddCatchModal = ({ isOpen, onClose, onAdd }) => {
         type: 'NB-IOT'
     });
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     if (!isOpen) return null;
@@ -27,9 +28,10 @@ const AddCatchModal = ({ isOpen, onClose, onAdd }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
         setError('');
+        const token = localStorage.getItem('token');
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch('/api/catches', {
                 method: 'POST',
                 headers: {
@@ -50,7 +52,9 @@ const AddCatchModal = ({ isOpen, onClose, onAdd }) => {
             }
         } catch (error) {
             console.error('Fehler:', error);
-            setError('Verbindung zum Server fehlgeschlagen');
+            setError(`Verbindung zum Server fehlgeschlagen: ${error.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -153,10 +157,11 @@ const AddCatchModal = ({ isOpen, onClose, onAdd }) => {
                             Abbrechen
                         </button>
                         <button
+                            disabled={loading}
                             type="submit"
-                            className="flex-1 px-6 py-4 bg-[#1b3a2e] text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all"
+                            className={`flex-1 px-6 py-4 bg-[#1b3a2e] text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            Speichern
+                            {loading ? 'Speichern...' : 'Speichern'}
                         </button>
                     </div>
                 </form>
