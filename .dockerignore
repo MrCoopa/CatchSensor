@@ -1,0 +1,13 @@
+node_modules
+client/node_modules
+backend/node_modules
+dist
+client/dist
+.git
+.env
+*.log
+*.crt
+*.key
+*.p12
+backend/vapid_keys.json
+client/dev-dist
