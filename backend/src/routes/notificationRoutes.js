@@ -1,4 +1,5 @@
 const express = require('express');
+console.log('--- Initializing Notification Routes ---');
 const router = express.Router();
 const notificationController = require('../controllers/notificationController');
 const { protect } = require('../middleware/authMiddleware');

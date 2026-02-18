@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, Info, Trash2, LogOut, ChevronRight, Settings, X } from 'lucide-react';
+import { User, Shield, Info, Trash2, LogOut, ChevronRight, Settings, X, Edit2 } from 'lucide-react';
+import EditCatchModal from './EditCatchModal';
 
 const Setup = ({ onLogout }) => {
     const [catches, setCatches] = useState([]);
@@ -17,6 +18,8 @@ const Setup = ({ onLogout }) => {
     const [swLogs, setSwLogs] = useState([]);
     const [showDebug, setShowDebug] = useState(false);
     const [selectedCatch, setSelectedCatch] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [catchToEdit, setCatchToEdit] = useState(null);
     const [shareEmail, setShareEmail] = useState('');
     const [catchShares, setCatchShares] = useState([]);
     const [loadingShares, setLoadingShares] = useState(false);
@@ -26,6 +29,45 @@ const Setup = ({ onLogout }) => {
     const [showPushover, setShowPushover] = useState(false);
 
     const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+    const testConnection = async () => {
+        setStatusMessage({ text: 'Teste Verbindung...', type: '' });
+        try {
+            const response = await fetch('/api/status');
+            if (response.ok) {
+                setStatusMessage({ text: 'Verbindung zum Server erfolgreich! ✅', type: 'success' });
+            } else {
+                setStatusMessage({ text: `Server antwortet mit Fehler ${response.status}`, type: 'error' });
+            }
+        } catch (error) {
+            setStatusMessage({ text: 'Server nicht erreichbar! ❌ Prüfen Sie die IP-Adresse.', type: 'error' });
+        }
+    };
+
+    const handleRemoteTestPush = async () => {
+        setStatusMessage({ text: 'Sende Test-Push über Server...', type: '' });
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/notifications/test', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                // If count is 0, it's a "success" 200 but nothing sent
+                if (data.count === 0) {
+                    setStatusMessage({ text: data.message || 'Keine Abos gefunden.', type: 'error' });
+                } else {
+                    setStatusMessage({ text: data.message || 'Test-Push erfolgreich gesendet! 🚀', type: 'success' });
+                }
+            } else {
+                setStatusMessage({ text: `Status ${res.status}: ${data.message || 'Fehler'}`, type: 'error' });
+            }
+        } catch (error) {
+            console.error('Remote test push error:', error);
+            setStatusMessage({ text: 'Verbindungsfehler.', type: 'error' });
+        }
+    };
 
 
 
@@ -257,9 +299,29 @@ const Setup = ({ onLogout }) => {
         }
     };
 
-    const handleDeleteCatchSensor = async (id, name, event) => {
+    const handleEditCatch = (catchSensor, event) => {
+        event.stopPropagation();
+        setCatchToEdit(catchSensor);
+        setIsEditModalOpen(true);
+    };
+
+    const handleCatchUpdated = (updatedCatch) => {
+        setCatches(catches.map(c => c.id === updatedCatch.id ? updatedCatch : c));
+        // Also update selectedCatch if it's currently open
+        if (selectedCatch && selectedCatch.id === updatedCatch.id) {
+            setSelectedCatch(updatedCatch);
+        }
+    };
+
+    const handleDeleteCatchSensor = async (id, name, userId, event) => {
         event.stopPropagation(); // Prevent opening detail modal
-        if (window.confirm(`Möchten Sie den CatchSensor "${name}" wirklich löschen?`)) {
+
+        const isOwner = currentUser && currentUser.id === userId;
+        const confirmMsg = isOwner
+            ? `Möchten Sie den Melder "${name}" wirklich unwiderruflich löschen?`
+            : `Möchten Sie den Melder "${name}" aus Ihrer Ansicht entfernen? (Der Besitzer behält ihn)`;
+
+        if (window.confirm(confirmMsg)) {
             try {
                 const token = localStorage.getItem('token');
                 const response = await fetch(`/api/catches/${id}`, {
@@ -434,55 +496,59 @@ const Setup = ({ onLogout }) => {
     };
 
     const togglePush = async () => {
+        console.log('--- TogglePush: START ---');
         if (!('serviceWorker' in navigator)) {
+            console.error('TogglePush: No ServiceWorker support');
             setStatusMessage({ text: 'Service Worker nicht vom Browser unterstützt.', type: 'error' });
             return;
         }
 
-        // Check VAPID Key presence
         const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+        console.log('TogglePush: VAPID Key available:', !!vapidKey);
         if (!vapidKey) {
             setStatusMessage({ text: 'Fehler: VAPID Key fehlt (Neustart erforderlich?).', type: 'error' });
             return;
         }
 
-        setStatusMessage({ text: 'Aktiviere Push...', type: '' });
+        setStatusMessage({ text: 'Verarbeite...', type: '' });
 
         try {
-            console.log('Push: Starting togglePush...');
-            // Check current registration first to avoid hanging on .ready
+            console.log('TogglePush: Checking registration...');
             let registration = await navigator.serviceWorker.getRegistration();
-            console.log('Push: Current registration:', registration);
+            console.log('TogglePush: Registration found:', !!registration);
 
             if (!registration || !registration.active) {
-                setStatusMessage({ text: 'Warte auf Service Worker Aktivierung...', type: '' });
-                console.log('Push: Waiting for .ready...');
-                const swReadyPromise = navigator.serviceWorker.ready;
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Service Worker wird nicht aktiv (Timeout). Bitte Seite neu laden.')), 10000)
-                );
-                registration = await Promise.race([swReadyPromise, timeoutPromise]);
-                console.log('Push: .ready resolved:', registration);
+                console.log('TogglePush: No active registration, waiting for .ready...');
+                setStatusMessage({ text: 'Warte auf Aktivierung...', type: '' });
+                registration = await navigator.serviceWorker.ready;
+                console.log('TogglePush: .ready resolved');
             }
 
             if (pushEnabled) {
-                console.log('Push: Disabling...');
+                console.log('TogglePush: Mode = DEACTIVATE');
                 const subscription = await registration.pushManager.getSubscription();
-                if (subscription) await subscription.unsubscribe();
+                console.log('TogglePush: Existing subscription to unsubscribe:', !!subscription);
+                if (subscription) {
+                    await subscription.unsubscribe();
+                    console.log('TogglePush: Unsubscribed browser.');
+                }
                 setPushEnabled(false);
                 setStatusMessage({ text: 'Push deaktiviert.', type: 'success' });
                 return;
             }
 
-            console.log('Push: Subscribing with VAPID key...');
+            console.log('TogglePush: Mode = ACTIVATE');
+            console.log('TogglePush: Calling pushManager.subscribe...');
             const sub = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(vapidKey)
             });
-            console.log('Push: Subscription object created:', sub.endpoint);
+            console.log('TogglePush: Browser subscription success! Endpoint:', sub.endpoint.substring(0, 30));
 
             setStatusMessage({ text: 'Speichere am Server...', type: '' });
             const token = localStorage.getItem('token');
+            console.log('TogglePush: Sending to backend /api/notifications/subscribe...');
+
             const res = await fetch('/api/notifications/subscribe', {
                 method: 'POST',
                 headers: {
@@ -492,23 +558,28 @@ const Setup = ({ onLogout }) => {
                 body: JSON.stringify(sub)
             });
 
+            console.log('TogglePush: Backend response status:', res.status);
+
             if (res.ok) {
-                console.log('Push: Server acknowledged subscription.');
+                console.log('TogglePush: SUCCESS');
                 setPushEnabled(true);
                 setStatusMessage({ text: 'Push aktiviert! Teste...', type: 'success' });
-                const testRes = await fetch('/api/notifications/test', {
+
+                // Optional: Instant test
+                await fetch('/api/notifications/test', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
-                });
-                console.log('Push: Test request sent. Status:', testRes.status);
+                }).catch(e => console.error('TogglePush: Initial test failed', e));
+
                 setStatusMessage({ text: 'Aktiviert & Test gesendet! 🚀', type: 'success' });
             } else {
                 const errData = await res.json().catch(() => ({}));
-                console.error('Push: Server error:', res.status, errData);
-                throw new Error(`Server-Fehler (${res.status}): ${errData.error || 'Unbekannt'}`);
+                console.error('TogglePush: Backend ERROR:', res.status, errData);
+                throw new Error(`Server-Fehler: ${errData.error || 'Speichern fehlgeschlagen'}`);
             }
         } catch (err) {
-            console.error('Push Error Detail:', err);
+            console.error('--- TogglePush: CATCH ---');
+            console.error('Error detail:', err);
             setStatusMessage({ text: `Push-Fehler: ${err.message}`, type: 'error' });
         }
     };
@@ -517,19 +588,7 @@ const Setup = ({ onLogout }) => {
         checkPushSubscription();
     }, []);
 
-    const testConnection = async () => {
-        setStatusMessage({ text: 'Teste Verbindung...', type: '' });
-        try {
-            const response = await fetch('/api/status');
-            if (response.ok) {
-                setStatusMessage({ text: 'Verbindung zum Server erfolgreich! ✅', type: 'success' });
-            } else {
-                setStatusMessage({ text: `Server antwortet mit Fehler ${response.status}`, type: 'error' });
-            }
-        } catch (error) {
-            setStatusMessage({ text: 'Server nicht erreichbar! ❌ Prüfen Sie die IP-Adresse.', type: 'error' });
-        }
-    };
+    const fixMe = "cleanup"; // Removing the old misplaced function definitions here
 
     if (isChangingPassword) {
         return (
@@ -639,6 +698,17 @@ const Setup = ({ onLogout }) => {
                                 <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
                         </div>
+
+                        {pushEnabled && (
+                            <div className="px-4 pb-4">
+                                <button
+                                    onClick={handleRemoteTestPush}
+                                    className="w-full py-2 bg-gray-50 text-[#1b3a2e] text-[10px] font-black uppercase tracking-widest rounded-xl border border-gray-100 hover:bg-gray-100 transition-all"
+                                >
+                                    Test PWA Push senden
+                                </button>
+                            </div>
+                        )}
 
                         {/* Battery Threshold Slider */}
                         <div className="p-4 space-y-3">
@@ -792,20 +862,31 @@ const Setup = ({ onLogout }) => {
 
                                         </div>
                                         <div className="flex items-center space-x-2">
+                                            {/* Edit Button (Owner Only) */}
+                                            {currentUser && catchSensor.userId === currentUser.id && (
+                                                <button
+                                                    onClick={(e) => handleEditCatch(catchSensor, e)}
+                                                    className="p-2 text-gray-300 hover:text-[#1b3a2e] hover:bg-green-50 rounded-xl transition-all"
+                                                    title="Bearbeiten"
+                                                >
+                                                    <Edit2 size={18} />
+                                                </button>
+                                            )}
+
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     openCatchSensorDetail(catchSensor);
                                                 }}
                                                 className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-                                                title="Freigeben"
+                                                title="Freigeben / Details"
                                             >
                                                 <User size={18} />
                                             </button>
                                             <button
-                                                onClick={(e) => handleDeleteCatchSensor(catchSensor.id, catchSensor.name, e)}
+                                                onClick={(e) => handleDeleteCatchSensor(catchSensor.id, catchSensor.name, catchSensor.userId, e)}
                                                 className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                                title="Löschen"
+                                                title="Löschen / Entfernen"
                                             >
                                                 <Trash2 size={18} />
                                             </button>
@@ -1093,6 +1174,21 @@ const Setup = ({ onLogout }) => {
                                     <ChevronRight size={18} className="text-gray-300" />
                                 </div>
                                 <div
+                                    onClick={handleRemoteTestPush}
+                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-orange-50 group transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-orange-50 p-2.5 rounded-2xl text-orange-600 group-hover:bg-orange-100">
+                                            <Shield size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Push-Test (Server)</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Sende Test-Push via Server</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300" />
+                                </div>
+                                <div
                                     onClick={handleLocalTest}
                                     className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-amber-50 group transition-colors cursor-pointer"
                                 >
@@ -1158,6 +1254,13 @@ const Setup = ({ onLogout }) => {
                         )}
                     </div>
                 </section>
+
+                <EditCatchModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    catchSensor={catchToEdit}
+                    onEdit={handleCatchUpdated}
+                />
 
             </main >
         </div >

@@ -102,7 +102,7 @@ app.use(express.json());
 
 // Request Logger
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl || req.url}`);
     next();
 });
 
@@ -314,7 +314,10 @@ app.use('/api/catches', (req, res, next) => {
     return protect(req, res, next);
 }, catchRoutes);
 app.use('/api/readings', protect, readingRoutes);
-app.use('/api/notifications', require('./src/routes/notificationRoutes'));
+app.use('/api/notifications', (req, res, next) => {
+    console.log(`Routing /api/notifications: path=${req.path} method=${req.method}`);
+    next();
+}, require('./src/routes/notificationRoutes'));
 
 // Socket.io connection handling
 const jwt = require('jsonwebtoken');

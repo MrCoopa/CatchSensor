@@ -110,22 +110,76 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
-// Delete a catch
-router.delete('/:id', async (req, res) => {
+// Rename/Update catch (owner only)
+router.patch('/:id', async (req, res) => {
     try {
-        console.log(`Attempting to delete catch ${req.params.id} for user ${req.user.id}`);
+        const { name, alias, location } = req.body;
         const catchSensor = await CatchSensor.findOne({ where: { id: req.params.id, userId: req.user.id } });
 
-        if (!catchSensor) {
-            console.log(`Catch ${req.params.id} not found for user ${req.user.id}`);
-            return res.status(404).json({ error: 'Catch not found or access denied' });
+        if (!catchSensor) return res.status(404).json({ error: 'Falle nicht gefunden oder kein Zugriff' });
+
+        if (name) catchSensor.name = name;
+        if (alias) catchSensor.alias = alias;
+        if (location !== undefined) catchSensor.location = location;
+
+        await catchSensor.save();
+
+        if (req.io) {
+            req.io.emit('catchSensorUpdate', catchSensor);
         }
 
-        await catchSensor.destroy();
-        console.log(`Catch ${req.params.id} deleted successfully`);
-        res.json({ message: 'Catch deleted successfully' });
+        res.json(catchSensor);
     } catch (error) {
-        console.error('Error deleting catch:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete or remove a catch
+router.delete('/:id', async (req, res) => {
+    try {
+        console.log(`Attempting to delete/remove catch ${req.params.id} for user ${req.user.id}`);
+        const userId = req.user.id;
+        const catchSensorId = req.params.id;
+
+        const catchSensor = await CatchSensor.findByPk(catchSensorId);
+        if (!catchSensor) return res.status(404).json({ error: 'Falle nicht gefunden' });
+
+        // 1. Case: User is Owner -> Full Delete
+        if (catchSensor.userId === userId) {
+            console.log(`User ${userId} is owner. Deleting catch ${catchSensorId} globally.`);
+            await catchSensor.destroy();
+
+            // Emit delete event
+            if (req.io) {
+                // Dashboard listens mostly for 'catchSensorUpdate', but we should emit delete too if handled, 
+                // or just rely on 'catchSensorUpdate' with status if we had soft delete. 
+                // Since Dashboard handles adding/updating via socket, let's emit a specialized delete event if needed, 
+                // BUT current Dashboard only listens to 'catchSensorUpdate'. 
+                // Ideally, we should add a listener for DELETE in Dashboard.
+                // However, the user issue is specifically about RENAME not showing up.
+                // Let's stick to just the rename fix first to be safe, or add a delete event listener in Dashboard later.
+                // Actually, if we delete, we should tell clients.
+                req.io.emit('catchSensorDelete', { id: catchSensorId });
+            }
+
+            return res.json({ message: 'Melder erfolgreich gelöscht' });
+        }
+
+        // 2. Case: User is NOT owner -> Remove share
+        const CatchShare = require('../models/CatchShare');
+        const share = await CatchShare.findOne({
+            where: { catchSensorId, userId }
+        });
+
+        if (share) {
+            console.log(`User ${userId} is NOT owner but has share. Deleting share for catch ${catchSensorId}.`);
+            await share.destroy();
+            return res.json({ message: 'Melder aus Ihrer Ansicht entfernt' });
+        }
+
+        return res.status(403).json({ error: 'Kein Zugriff auf diesen Melder' });
+    } catch (error) {
+        console.error('Error deleting/removing catch:', error);
         res.status(500).json({ error: error.message });
     }
 });

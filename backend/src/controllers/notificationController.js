@@ -1,34 +1,40 @@
 const PushSubscription = require('../models/PushSubscription');
 const { sendPushNotification } = require('../services/pushService');
+const sequelize = require('../config/database');
 
 exports.subscribe = async (req, res) => {
     try {
         const subscription = req.body;
-        const userId = req.user.id; // From authMiddleware
+        const userId = req.user.id;
 
         if (!subscription || !subscription.endpoint) {
             return res.status(400).json({ error: 'Invalid subscription object' });
         }
 
-        // Check if exists
-        const [sub, created] = await PushSubscription.findOrCreate({
-            where: { endpoint: subscription.endpoint },
-            defaults: {
-                keys: subscription.keys,
-                userId: userId
-            }
-        });
+        // Helper to ensure we store keys as an object
+        // (Though Sequelize JSON type should handle it, we want to be safe)
+        let subKeys = subscription.keys;
+        if (typeof subKeys === 'string') {
+            try { subKeys = JSON.parse(subKeys); } catch (e) { }
+        }
 
-        if (!created && sub.userId !== userId) {
-            // Update user if changed (multi-user device scenario)
+        let sub = await PushSubscription.findOne({ where: { endpoint: subscription.endpoint } });
+
+        if (sub) {
             sub.userId = userId;
-            sub.keys = subscription.keys; // Update keys just in case
+            sub.keys = subKeys;
             await sub.save();
+        } else {
+            await PushSubscription.create({
+                endpoint: subscription.endpoint,
+                keys: subKeys,
+                userId: userId
+            });
         }
 
         res.status(201).json({ message: 'Subscription saved.' });
     } catch (error) {
-        console.error('Subscribe error:', error);
+        console.error('Subscribe Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -39,31 +45,50 @@ exports.testNotification = async (req, res) => {
         const subscriptions = await PushSubscription.findAll({ where: { userId } });
 
         if (subscriptions.length === 0) {
-            return res.status(404).json({ message: 'No subscriptions found for user.' });
+            return res.status(200).json({
+                message: 'Keine aktiven Browser-Abos gefunden. Bitte Push-Benachrichtigungen erst aktivieren.',
+                count: 0
+            });
         }
 
         let sentCount = 0;
         for (const sub of subscriptions) {
-            // Construct subscription object for web-push
-            const pushSub = {
-                endpoint: sub.endpoint,
-                keys: sub.keys
-            };
+            // Robust parsing for keys that might be double-stringified in DB
+            let currentKeys = sub.keys;
+            let parseAttempts = 0;
+            while (typeof currentKeys === 'string' && parseAttempts < 3) {
+                try {
+                    currentKeys = JSON.parse(currentKeys);
+                } catch (e) {
+                    console.error(`Keys parse error for sub ${sub.id}:`, e.message);
+                    break;
+                }
+                parseAttempts++;
+            }
 
-            // Send test Notif
-            await sendPushNotification(
-                { name: 'Test-Device', location: 'System', id: 'test' },
-                'TEST',
-                pushSub
-            );
-            sentCount++;
+            // Validate keys
+            if (!currentKeys || typeof currentKeys !== 'object' || !currentKeys.p256dh || !currentKeys.auth) {
+                console.warn(`Test Notification: ⚠️ Invalid keys for sub ${sub.id}. Cleaning up.`);
+                await sub.destroy();
+                continue;
+            }
+
+            try {
+                await sendPushNotification(
+                    { name: 'Test-Device', location: 'System', id: 'test' },
+                    'TEST',
+                    { endpoint: sub.endpoint, keys: currentKeys }
+                );
+                sentCount++;
+            } catch (err) {
+                console.error(`Test Notification Failed for ${sub.endpoint.substring(0, 20)}...`, err.message);
+            }
         }
 
-        res.json({ message: `Sent test notification to ${sentCount} devices.` });
+        res.json({ message: `Test-Push an ${sentCount} Gerät(e) gesendet.`, count: sentCount });
 
     } catch (error) {
         console.error('Test notification error:', error);
         res.status(500).json({ error: 'Failed to send test notification.' });
     }
 };
-
