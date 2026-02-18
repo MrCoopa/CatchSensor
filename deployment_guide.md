@@ -49,8 +49,30 @@ Dieser Fehler liegt an einer falschen Zeichenkodierung (UTF-16) in Portainer.
 4. Sobald der Stack läuft, kannst du die Sicherheitseinstellungen (Passwörter etc.) in Ruhe anpassen.
 
 ## 🔒 Security Tips
-- **Reverse Proxy**: It is highly recommended to use **Nginx Proxy Manager** or **Traefik** to handle SSL (HTTPS). 
-- **Tailscale/VPN**: For private remote access without exposing ports, using **Tailscale** is the easiest and most secure option for a home server.
+## 🌐 Nginx Proxy Manager (NPM) Setup
+
+Um SSL-Warnungen loszuwerden und die App unter einer schönen Adresse (z.B. `https://trapsensor.local`) zu erreichen, folge diesen Schritten in NPM:
+
+### 1. Proxy Host anlegen
+- **Domain Names**: Deine Wunsch-Adresse (z.B. `trapsensor.home`).
+- **Scheme**: `http`
+- **Forward Host/IP**: Die IP deines Servers oder `trapsensor_app` (wenn NPM im selben Docker-Netzwerk ist).
+- **Forward Port**: `5000`
+- **Websockets Support**: **AN** (wichtig für Echtzeit-Updates!).
+- **Block Common Exploits**: AN.
+
+### 2. SSL (Verschlüsselung)
+Damit die Browser-Warnung verschwindet, brauchst du ein gültiges Zertifikat.
+- **Option A (Einfach - Internet nötig):**域名 kurzzeitig per Port 80/443 freigeben, SSL in NPM via Let's Encrypt anfordern ("Request a new SSL Certificate"). Danach Ports wieder schließen.
+- **Option B (Lokal-Only - Fortgeschritten):** Nutze Let's Encrypt mit der **DNS Challenge** in NPM. Dabei musst du keine Ports öffnen, sondern NPM verifiziert den Besitz der Domain über deinen DNS-Provider (z.B. Cloudflare, Ionos).
+- **Option C (Eigene CA):** Lokales Zertifikat (z.B. via Step-CA oder mkcert) erstellen und im Tab "Custom SSL" hochladen.
+
+### 3. DNS-Eintrag
+Vergiss nicht, in deinem Router (z.B. FritzBox) oder in deinem lokalen DNS (Pi-hole/AdGuard) einen Eintrag zu erstellen, der `trapsensor.home` auf die IP deines Servers zeigt.
+
+## 🔒 Security Tips
+- **Trust Proxy**: Die App ist bereits so konfiguriert, dass sie `X-Forwarded-For` Header von NPM akzeptiert.
+- **Tailscale/VPN**: Für privaten Fernzugriff ohne Portfreigaben ist **Tailscale** die am einfachsten zu konfigurierende Option.
 
 ## 🛠 Maintenance
 - **View Logs**: `docker-compose logs -f app`
