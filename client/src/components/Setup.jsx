@@ -846,7 +846,7 @@ const Setup = ({ onLogout }) => {
                                         <div className="bg-gray-50 p-4 rounded-2xl">
                                             <div className="text-[10px] uppercase font-black text-gray-400 mb-1">Status</div>
                                             <div className={`font-bold ${selectedCatch.status === 'active' ? 'text-green-600' : 'text-gray-900'}`}>
-                                                {selectedCatch.status === 'active' ? 'Aktiv' : selectedCatch.status === 'triggered' ? 'Ausgelöst' : 'Inaktiv'}
+                                                {selectedCatch.status === 'active' ? 'Online' : selectedCatch.status === 'triggered' ? 'Ausgelöst' : 'Inaktiv'}
                                             </div>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-2xl">
