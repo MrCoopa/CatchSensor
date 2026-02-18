@@ -1,19 +1,19 @@
 # System Interfaces Documentation
 
-This document outlines the external and internal interfaces used by the **TrapSensor** application.
+This document outlines the external and internal interfaces used by the **CatchSensor** application.
 
 ## 1. MQTT Interfaces (Ingress)
-The system listens to MQTT brokers to receive sensor data from traps.
+The system listens to MQTT brokers to receive sensor data from CatchSensors.
 
-### A. NB-IoT Traps (Internal/External Broker)
+### A. NB-IoT CatchSensors (Internal/External Broker)
 *   **Protocol**: MQTT (TCP/1883)
-*   **Topic**: `traps/{imei}/data`
+*   **Topic**: `catches/{imei}/data`
 *   **Payload Format**: Binary (4 Bytes)
     *   Byte 0: **Status** (0x01 = Active, 0x00 = Triggered/Alarm)
     *   Byte 1-2: **Voltage** (UInt16BE, in mV)
     *   Byte 3: **RSSI** (UInt8, absolute value, e.g., 60 = -60dBm)
 
-### B. LoRaWAN Traps (The Things Network Integration)
+### B. LoRaWAN CatchSensors (The Things Network Integration)
 *   **Protocol**: MQTTS (TLS/8883) via TTN
 *   **Topic**: `v3/{app-id}@ttn/devices/{device-id}/up`
 *   **Payload Format**: JSON (TTN v3 Uplink Schema)
@@ -31,21 +31,21 @@ The React frontend communicates with the backend via these HTTP endpoints.
 *   `POST /login`: Login and receive JWT.
 *   `GET /me`: Get current user profile.
 
-### Trap Management (`/api/traps`)
-*   `GET /`: List all accessible traps (Owned + Shared).
-*   `POST /`: Register a new trap (or claim an auto-provisioned one).
+### CatchSensor Management (`/api/catches`)
+*   `GET /`: List all accessible CatchSensors (Owned + Shared).
+*   `POST /`: Register a new CatchSensor (or claim an auto-provisioned one).
     *   Body: `{ name, alias, imei|deviceId, type }`
-*   `PATCH /:id/status`: Update trap status manually.
-*   `DELETE /:id`: Delete a trap.
+*   `PATCH /:id/status`: Update CatchSensor status manually.
+*   `DELETE /:id`: Delete a CatchSensor.
 *   `POST /simulate`: (Dev Tool) Simulate an MQTT message.
 
-### Sharing (`/api/traps`)
-*   `POST /:id/share`: Share a trap with another user by email.
+### Sharing (`/api/catches`)
+*   `POST /:id/share`: Share a CatchSensor with another user by email.
 *   `DELETE /:id/share/:userId`: Revoke access.
 *   `GET /:id/shares`: List users who have access.
 
 ### Readings (`/api/readings`)
-*   `GET /:trapId`: Retrieve historical readings (last 50).
+*   `GET /:catchSensorId`: Retrieve historical readings (last 50).
 
 ---
 
@@ -57,7 +57,7 @@ The system calls out to these services to notify users.
 *   **Trigger**: Alarm (`triggered`) or Low Battery (< 20%).
 *   **Data Sent**:
     *   Title (Alarm/Info)
-    *   Message (Trap Name)
+    *   Message (CatchSensor Name)
     *   Priority (High for Alarm)
     *   Sound (Siren for Alarm)
 

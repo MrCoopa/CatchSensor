@@ -1,6 +1,6 @@
-# 🦊 TrapSensor
+# 🦊 CatchSensor
 
-**TrapSensor** ist eine moderne IoT-Lösung zur Echtzeit-Überwachung von Fallenmeldern. Das System unterstützt sowohl **NB-IoT** (über eigenen Broker) als auch **LoRaWAN** (via The Things Network), bietet detaillierte Status-Visualisierungen und intelligente Benachrichtigungen.
+**CatchSensor** ist eine moderne IoT-Lösung zur Echtzeit-Überwachung von Fallenmeldern. Das System unterstützt sowohl **NB-IoT** (über eigenen Broker) als auch **LoRaWAN** (via The Things Network), bietet detaillierte Status-Visualisierungen und intelligente Benachrichtigungen.
 
 ---
 
@@ -39,8 +39,8 @@
 
 ### 1. Repository klonen
 ```bash
-git clone <repository-url>
-cd TrapSensor
+git clone https://github.com/MrCoopa/CatchSensor.git
+cd CatchSensor
 ```
 
 ### 2. Backend einrichten

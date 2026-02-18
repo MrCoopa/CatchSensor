@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const sequelize = require('./src/config/database');
 
 // Import Models
-const Trap = require('./src/models/Trap');
+const CatchSensor = require('./src/models/CatchSensor');
 const Reading = require('./src/models/Reading');
 const User = require('./src/models/User');
 const PushSubscription = require('./src/models/PushSubscription');
@@ -13,17 +13,17 @@ const LoraMetadata = require('./src/models/LoraMetadata');
 
 
 // Associations
-User.hasMany(Trap, { foreignKey: 'userId' });
-Trap.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(CatchSensor, { foreignKey: 'userId' });
+CatchSensor.belongsTo(User, { foreignKey: 'userId' });
 
-Trap.hasMany(Reading, { foreignKey: 'trapId' });
-Reading.belongsTo(Trap, { foreignKey: 'trapId' });
+CatchSensor.hasMany(Reading, { foreignKey: 'catchSensorId' });
+Reading.belongsTo(CatchSensor, { foreignKey: 'catchSensorId' });
 
 User.hasMany(PushSubscription, { foreignKey: 'userId', onDelete: 'CASCADE' });
 PushSubscription.belongsTo(User, { foreignKey: 'userId' });
 
 // Import routes
-const trapRoutes = require('./src/routes/trapRoutes');
+const catchRoutes = require('./src/routes/catchRoutes');
 const readingRoutes = require('./src/routes/readingRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { protect } = require('./src/middleware/authMiddleware');
@@ -146,7 +146,7 @@ app.get('/status', (req, res) => {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>TrapSensor | System Status</title>
+            <title>CatchSensor | System Status</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
             <style>
@@ -187,8 +187,8 @@ app.get('/status', (req, res) => {
                         </div>
                         <div class="w-px h-12 bg-white/10 hidden md:block"></div>
                         <div class="text-center md:text-left">
-                            <h2 class="text-4xl font-black mb-2" id="total-traps">0</h2>
-                            <p class="text-white/60 font-medium uppercase tracking-widest text-xs">Registrierte Fallen</p>
+                            <h2 class="text-4xl font-black mb-2" id="total-catches">0</h2>
+                            <p class="text-white/60 font-medium uppercase tracking-widest text-xs">Registrierte Melder</p>
                         </div>
                         <div class="w-px h-12 bg-white/10 hidden md:block"></div>
                         <div class="text-center md:text-left">
@@ -251,7 +251,7 @@ app.get('/status', (req, res) => {
                         \`;
 
                         document.getElementById('total-users').innerText = data.stats.totalUsers;
-                        document.getElementById('total-traps').innerText = data.stats.totalTraps;
+                        document.getElementById('total-catches').innerText = data.stats.totalCatches;
                         document.getElementById('total-readings').innerText = data.stats.totalReadings;
                         document.getElementById('server-uptime').innerText = Math.floor(data.server.uptime / 60) + 'm ' + Math.floor(data.server.uptime % 60) + 's';
                         document.getElementById('last-update').innerText = new Date(data.timestamp).toLocaleTimeString('de-DE');
@@ -272,7 +272,7 @@ app.get('/status', (req, res) => {
 app.get('/api/status', async (req, res) => {
     try {
         const userCount = await User.count();
-        const trapCount = await Trap.count();
+        const catchCount = await CatchSensor.count();
         const readingCount = await Reading.count();
         res.json({
             status: 'online',
@@ -288,7 +288,7 @@ app.get('/api/status', async (req, res) => {
             },
             stats: {
                 totalUsers: userCount,
-                totalTraps: trapCount,
+                totalCatches: catchCount,
                 totalReadings: readingCount
             },
             visualDashboard: 'http://192.168.2.217:5000/'
@@ -301,11 +301,11 @@ app.get('/api/status', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-// The /simulate route is inside trapRoutes, but we want it public
-app.use('/api/traps', (req, res, next) => {
+// The /simulate route is inside catchRoutes, but we want it public
+app.use('/api/catches', (req, res, next) => {
     if (req.path === '/simulate') return next();
     return protect(req, res, next);
-}, trapRoutes);
+}, catchRoutes);
 app.use('/api/readings', protect, readingRoutes);
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 
@@ -382,3 +382,4 @@ async function startServer() {
 }
 
 startServer();
+

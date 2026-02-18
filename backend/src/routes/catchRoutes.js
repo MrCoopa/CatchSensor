@@ -1,77 +1,70 @@
 const express = require('express');
-const Trap = require('../models/Trap');
+const CatchSensor = require('../models/CatchSensor');
 const LoraMetadata = require('../models/LoraMetadata');
 const router = express.Router();
 
 
-// Get all traps for the logged-in user (owned + shared)
+// Get all catches for the logged-in user (owned + shared)
 router.get('/', async (req, res) => {
     try {
         const { Op } = require('sequelize');
-        const TrapShare = require('../models/TrapShare');
+        const CatchShare = require('../models/CatchShare');
 
-        // Find IDs of traps shared with this user
-        const sharedShares = await TrapShare.findAll({
+        const sharedShares = await CatchShare.findAll({
             where: { userId: req.user.id },
-            attributes: ['trapId']
+            attributes: ['catchSensorId']
         });
-        const sharedTrapIds = sharedShares.map(s => s.trapId);
+        const sharedCatchIds = sharedShares.map(s => s.catchSensorId);
 
-        const traps = await Trap.findAll({
+        const catches = await CatchSensor.findAll({
             where: {
                 [Op.or]: [
-                    { userId: req.user.id }, // Owned traps
-                    { id: { [Op.in]: sharedTrapIds } } // Shared traps
+                    { userId: req.user.id },
+                    { id: { [Op.in]: sharedCatchIds } }
                 ]
             },
-            include: [{ model: LoraMetadata, as: 'lorawanTrapSensor' }]
+            include: [{ model: LoraMetadata, as: 'lorawanCatchSensor' }]
 
         });
 
-
-        res.json(traps);
+        res.json(catches);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Create a new trap assigned to the logged-in user
+// Create a new catch assigned to the logged-in user
 router.post('/', async (req, res) => {
     try {
         const { name, alias, location, imei, deviceId, type = 'NB-IOT' } = req.body;
         const identifier = (type === 'LORAWAN' ? deviceId : imei);
 
-        // Basic validation
         if (!name && !alias) return res.status(400).json({ error: 'Name/Alias ist erforderlich' });
         if (!identifier) return res.status(400).json({ error: `${type === 'LORAWAN' ? 'Device ID' : 'IMEI'} ist erforderlich` });
 
-        // Check if trap already exists
-        let existingTrap = await Trap.findOne({
+        let existingCatch = await CatchSensor.findOne({
             where: {
                 [type === 'LORAWAN' ? 'deviceId' : 'imei']: identifier
             }
         });
 
-        if (existingTrap) {
-            // Case A: Trap exists and is already owned (Bound)
-            if (existingTrap.userId) {
+        if (existingCatch) {
+            if (existingCatch.userId) {
                 return res.status(400).json({ error: 'Diese Kennung (IMEI/DeviceID) ist bereits registriert und einem anderen Benutzer zugewiesen.' });
             }
 
-            // Case B: Trap exists but is unbound (Auto-provisioned) -> CLAIM IT
-            console.log(`Trap Claiming: User ${req.user.id} is claiming unbound trap ${identifier}`);
-            existingTrap.name = name || alias;
-            existingTrap.alias = alias || name;
-            existingTrap.location = location;
-            existingTrap.userId = req.user.id;
-            existingTrap.type = type; // Ensure type is correct
+            console.log(`Catch Claiming: User ${req.user.id} is claiming unbound catch ${identifier}`);
+            existingCatch.name = name || alias;
+            existingCatch.alias = alias || name;
+            existingCatch.location = location;
+            existingCatch.userId = req.user.id;
+            existingCatch.type = type;
 
-            await existingTrap.save();
-            return res.status(200).json(existingTrap);
+            await existingCatch.save();
+            return res.status(200).json(existingCatch);
         }
 
-        // Case C: Trap does not exist -> Create new
-        const newTrap = await Trap.create({
+        const newCatch = await CatchSensor.create({
             name: name || alias,
             alias: alias || name,
             location,
@@ -80,9 +73,9 @@ router.post('/', async (req, res) => {
             type,
             userId: req.user.id
         });
-        res.status(201).json(newTrap);
+        res.status(201).json(newCatch);
     } catch (error) {
-        console.error('Trap Creation Error:', error);
+        console.error('Catch Creation Error:', error);
         if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(400).json({ error: 'Diese Kennung ist bereits registriert.' });
         }
@@ -91,66 +84,63 @@ router.post('/', async (req, res) => {
 });
 
 
-// Update trap status
+// Update catch status
 router.patch('/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
-        const trap = await Trap.findByPk(req.params.id);
-        if (!trap) return res.status(404).json({ error: 'Trap not found' });
+        const catchSensor = await CatchSensor.findByPk(req.params.id);
+        if (!catchSensor) return res.status(404).json({ error: 'Catch not found' });
 
-        trap.status = status;
-        await trap.save();
-        res.json(trap);
+        catchSensor.status = status;
+        await catchSensor.save();
+        res.json(catchSensor);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Delete a trap
+// Delete a catch
 router.delete('/:id', async (req, res) => {
     try {
-        console.log(`Attempting to delete trap ${req.params.id} for user ${req.user.id}`);
-        const trap = await Trap.findOne({ where: { id: req.params.id, userId: req.user.id } });
+        console.log(`Attempting to delete catch ${req.params.id} for user ${req.user.id}`);
+        const catchSensor = await CatchSensor.findOne({ where: { id: req.params.id, userId: req.user.id } });
 
-        if (!trap) {
-            console.log(`Trap ${req.params.id} not found for user ${req.user.id}`);
-            return res.status(404).json({ error: 'Trap not found or access denied' });
+        if (!catchSensor) {
+            console.log(`Catch ${req.params.id} not found for user ${req.user.id}`);
+            return res.status(404).json({ error: 'Catch not found or access denied' });
         }
 
-        await trap.destroy();
-        console.log(`Trap ${req.params.id} deleted successfully`);
-        res.json({ message: 'Trap deleted successfully' });
+        await catchSensor.destroy();
+        console.log(`Catch ${req.params.id} deleted successfully`);
+        res.json({ message: 'Catch deleted successfully' });
     } catch (error) {
-        console.error('Error deleting trap:', error);
+        console.error('Error deleting catch:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Share a trap with another user by email
+// Share a catch with another user by email
 router.post('/:id/share', async (req, res) => {
     try {
         const { email } = req.body;
-        const trapId = req.params.id;
+        const catchSensorId = req.params.id;
         const User = require('../models/User');
-        const TrapShare = require('../models/TrapShare');
+        const CatchShare = require('../models/CatchShare');
 
         if (!email) return res.status(400).json({ error: 'E-Mail ist erforderlich' });
 
-        // 1. Verify ownership
-        const trap = await Trap.findOne({ where: { id: trapId, userId: req.user.id } });
-        if (!trap) return res.status(404).json({ error: 'Falle nicht gefunden oder kein Zugriff (Nur Besitzer können teilen)' });
+        const catchSensor = await CatchSensor.findOne({ where: { id: catchSensorId, userId: req.user.id } });
+        if (!catchSensor) return res.status(404).json({ error: 'Falle nicht gefunden oder kein Zugriff (Nur Besitzer können teilen)' });
 
-        // 2. Find target user
         const targetUser = await User.findOne({ where: { email } });
         if (!targetUser) return res.status(404).json({ error: 'Benutzer mit dieser E-Mail nicht gefunden' });
 
         if (targetUser.id === req.user.id) return res.status(400).json({ error: 'Sie können die Falle nicht mit sich selbst teilen' });
 
-        // 3. Create Share
-        await TrapShare.create({
-            trapId,
+        await CatchShare.create({
+            catchSensorId,
             userId: targetUser.id,
-            permission: 'read' // Default to read-only for now
+            permission: 'read'
         });
 
         res.status(201).json({ message: `Falle erfolgreich mit ${email} geteilt` });
@@ -166,18 +156,16 @@ router.post('/:id/share', async (req, res) => {
 // Remove a share (Unshare)
 router.delete('/:id/share/:userId', async (req, res) => {
     try {
-        const trapId = req.params.id;
+        const catchSensorId = req.params.id;
         const targetUserId = req.params.userId;
-        const TrapShare = require('../models/TrapShare');
+        const CatchShare = require('../models/CatchShare');
 
-        // 1. Verify ownership of the trap
-        const trap = await Trap.findOne({ where: { id: trapId, userId: req.user.id } });
-        if (!trap) return res.status(404).json({ error: 'Falle nicht gefunden oder kein Zugriff' });
+        const catchSensor = await CatchSensor.findOne({ where: { id: catchSensorId, userId: req.user.id } });
+        if (!catchSensor) return res.status(404).json({ error: 'Falle nicht gefunden oder kein Zugriff' });
 
-        // 2. Remove Share
-        const deleted = await TrapShare.destroy({
+        const deleted = await CatchShare.destroy({
             where: {
-                trapId,
+                catchSensorId,
                 userId: targetUserId
             }
         });
@@ -193,19 +181,18 @@ router.delete('/:id/share/:userId', async (req, res) => {
     }
 });
 
-// Get users who have access to this trap
+// Get users who have access to this catch
 router.get('/:id/shares', async (req, res) => {
     try {
-        const trapId = req.params.id;
+        const catchSensorId = req.params.id;
         const User = require('../models/User');
-        const TrapShare = require('../models/TrapShare');
+        const CatchShare = require('../models/CatchShare');
 
-        // Verify ownership
-        const trap = await Trap.findOne({ where: { id: trapId, userId: req.user.id } });
-        if (!trap) return res.status(403).json({ error: 'Nur der Besitzer kann Freigaben sehen' });
+        const catchSensor = await CatchSensor.findOne({ where: { id: catchSensorId, userId: req.user.id } });
+        if (!catchSensor) return res.status(403).json({ error: 'Nur der Besitzer kann Freigaben sehen' });
 
-        const shares = await TrapShare.findAll({
-            where: { trapId },
+        const shares = await CatchShare.findAll({
+            where: { catchSensorId },
             include: [{ model: User, attributes: ['id', 'email'] }]
         });
 
@@ -223,16 +210,13 @@ router.get('/:id/shares', async (req, res) => {
 
 const mqtt = require('mqtt');
 
-// Simulate MQTT data for a trap
-// This is PUBLIC for the simulator tool to work without token hurdles
+// Simulate MQTT data for a catch
 router.post('/simulate', async (req, res) => {
     try {
         const { imei, status, batteryVoltage, rssi, jitter = true } = req.body;
 
         if (!imei) return res.status(400).json({ error: 'IMEI ist erforderlich' });
 
-        // DIRECT PUBLISH to internal Aedes instance
-        // This is 100% reliable as it bypasses the network stack
         const statusCode = status === 'triggered' ? 0x00 : 0x01;
 
         let voltage = parseInt(batteryVoltage) || 4200;
@@ -248,7 +232,7 @@ router.post('/simulate', async (req, res) => {
         payload.writeUInt16BE(voltage, 1);
         payload.writeUInt8(rssiVal, 3);
 
-        const topic = `traps/${imei}/data`;
+        const topic = `catches/${imei}/data`;
 
         req.aedes.publish({
             topic,
@@ -275,3 +259,4 @@ router.post('/simulate', async (req, res) => {
 });
 
 module.exports = router;
+

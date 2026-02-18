@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Shield, Info, Trash2, LogOut, ChevronRight, Settings, X } from 'lucide-react';
 
 const Setup = ({ onLogout }) => {
-    const [traps, setTraps] = useState([]);
+    const [catches, setCatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState(null);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -16,9 +16,9 @@ const Setup = ({ onLogout }) => {
     const [notifPermission, setNotifPermission] = useState('default');
     const [swLogs, setSwLogs] = useState([]);
     const [showDebug, setShowDebug] = useState(false);
-    const [selectedTrap, setSelectedTrap] = useState(null);
+    const [selectedCatch, setSelectedCatch] = useState(null);
     const [shareEmail, setShareEmail] = useState('');
-    const [trapShares, setTrapShares] = useState([]);
+    const [catchShares, setCatchShares] = useState([]);
     const [loadingShares, setLoadingShares] = useState(false);
     const [pushoverAppKey, setPushoverAppKey] = useState('');
     const [pushoverUserKey, setPushoverUserKey] = useState('');
@@ -196,13 +196,13 @@ const Setup = ({ onLogout }) => {
             const token = localStorage.getItem('token');
             const baseUrl = '';
 
-            // Parallel fetch for user profile and traps list
-            const [userRes, trapsRes] = await Promise.all([
+            // Parallel fetch for user profile and catches list
+            const [userRes, catchesRes] = await Promise.all([
                 fetch(`${baseUrl}/api/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${baseUrl}/api/traps`, { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${baseUrl}/api/catches`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
-            if (userRes.status === 401 || trapsRes.status === 401) {
+            if (userRes.status === 401 || catchesRes.status === 401) {
                 onLogout();
                 return;
             }
@@ -216,7 +216,7 @@ const Setup = ({ onLogout }) => {
                 if (userData.pushEnabled !== undefined) setPushEnabled(userData.pushEnabled);
             }
 
-            if (trapsRes.ok) setTraps(await trapsRes.json());
+            if (catchesRes.ok) setCatches(await catchesRes.json());
 
         } catch (error) {
             console.error('Fehler beim Abrufen der Daten:', error);
@@ -259,19 +259,19 @@ const Setup = ({ onLogout }) => {
         }
     };
 
-    const handleDeleteTrap = async (id, name, event) => {
+    const handleDeleteCatchSensor = async (id, name, event) => {
         event.stopPropagation(); // Prevent opening detail modal
-        if (window.confirm(`Möchten Sie den TrapSensor "${name}" wirklich löschen?`)) {
+        if (window.confirm(`Möchten Sie den CatchSensor "${name}" wirklich löschen?`)) {
             try {
                 const token = localStorage.getItem('token');
                 const baseUrl = '';
-                const response = await fetch(`${baseUrl}/api/traps/${id}`, {
+                const response = await fetch(`${baseUrl}/api/catches/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
-                    setTraps(traps.filter(t => t.id !== id));
-                    if (selectedTrap && selectedTrap.id === id) setSelectedTrap(null);
+                    setCatches(catches.filter(c => c.id !== id));
+                    if (selectedCatch && selectedCatch.id === id) setSelectedCatch(null);
                 } else {
                     const errorData = await response.json();
                     console.error('Löschen fehlgeschlagen:', response.status, errorData);
@@ -283,13 +283,13 @@ const Setup = ({ onLogout }) => {
         }
     };
 
-    const handleShareTrap = async (e) => {
+    const handleShareCatchSensor = async (e) => {
         e.preventDefault();
         if (!shareEmail) return;
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/traps/${selectedTrap.id}/share`, {
+            const response = await fetch(`/api/catches/${selectedCatch.id}/share`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -302,8 +302,8 @@ const Setup = ({ onLogout }) => {
 
             if (response.ok) {
                 setShareEmail('');
-                alert('TrapSensor erfolgreich geteilt!');
-                fetchShares(selectedTrap.id);
+                alert('CatchSensor erfolgreich geteilt!');
+                fetchShares(selectedCatch.id);
             } else {
                 alert(`Fehler: ${data.error}`);
             }
@@ -313,17 +313,17 @@ const Setup = ({ onLogout }) => {
         }
     };
 
-    const handleUnshareTrap = async (userId) => {
+    const handleUnshareCatchSensor = async (userId) => {
         if (!confirm('Zugriff für diesen Nutzer wirklich entfernen?')) return;
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/traps/${selectedTrap.id}/share/${userId}`, {
+            const response = await fetch(`/api/catches/${selectedCatch.id}/share/${userId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (response.ok) {
-                fetchShares(selectedTrap.id);
+                fetchShares(selectedCatch.id);
             } else {
                 alert('Fehler beim Entfernen der Freigabe.');
             }
@@ -332,38 +332,35 @@ const Setup = ({ onLogout }) => {
         }
     };
 
-    const fetchShares = async (trapId) => {
+    const fetchShares = async (catchSensorId) => {
         setLoadingShares(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/traps/${trapId}/shares`, {
+            const response = await fetch(`/api/catches/${catchSensorId}/shares`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
-                setTrapShares(await response.json());
+                setCatchShares(await response.json());
             } else {
-                // If 403, maybe not owner, but that's handled by backend.
-                // If just shared with me permission, I cannot see other shares usually, or depends on logic.
-                // If I am just a viewer, backend returns 403 for /shares.
-                setTrapShares([]);
+                setCatchShares([]);
             }
         } catch (error) {
             console.error('Fetch shares error:', error);
-            setTrapShares([]);
+            setCatchShares([]);
         } finally {
             setLoadingShares(false);
         }
     };
 
-    const openTrapDetail = (trap) => {
-        setSelectedTrap(trap);
+    const openCatchSensorDetail = (catchSensor) => {
+        setSelectedCatch(catchSensor);
         // Only fetch shares if I am the owner (userId matches). Determine simple check or try fetch.
         // If query fails (403), we know we are not owner.
-        // We can check currentUser.id === trap.userId if available.
-        if (currentUser && trap.userId === currentUser.id) {
-            fetchShares(trap.id);
+        // We can check currentUser.id === catchSensor.userId if available.
+        if (currentUser && catchSensor.userId === currentUser.id) {
+            fetchShares(catchSensor.id);
         } else {
-            setTrapShares([]);
+            setCatchShares([]);
         }
     };
 
@@ -616,10 +613,10 @@ const Setup = ({ onLogout }) => {
                     <div className="flex items-center space-x-3">
                         <img
                             src="/icons/fox-logo.png"
-                            alt="TrapSensor Logo"
+                            alt="CatchSensor Logo"
                             className="w-20 h-20 rounded-3xl shadow-xl border border-white/20 object-contain bg-white/5"
                         />
-                        <h1 className="text-2xl font-black tracking-tight">TrapSensor Setup</h1>
+                        <h1 className="text-2xl font-black tracking-tight">CatchSensor Setup</h1>
                     </div>
                     <div className="flex items-center space-x-3">
                         <Settings size={20} className="text-white/60" />
@@ -768,34 +765,34 @@ const Setup = ({ onLogout }) => {
                     </div>
                 </section>
 
-                {/* Trap Management Section */}
+                {/* CatchSensor Management Section */}
                 < section >
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">TrapSensor Verwalten</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">CatchSensor Verwalten</label>
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden text-center">
                         {loading ? (
-                            <div className="p-8 text-center text-gray-400 text-sm italic">Lade TrapSensor...</div>
-                        ) : traps.length === 0 ? (
-                            <div className="p-8 text-center text-gray-400 text-sm italic">Keine TrapSensor gefunden.</div>
+                            <div className="p-8 text-center text-gray-400 text-sm italic">Lade CatchSensor...</div>
+                        ) : catches.length === 0 ? (
+                            <div className="p-8 text-center text-gray-400 text-sm italic">Keine CatchSensor gefunden.</div>
                         ) : (
                             <div className="divide-y divide-gray-50">
-                                {traps.map(trap => (
+                                {catches.map(catchSensor => (
                                     <div
-                                        key={trap.id}
-                                        onClick={() => openTrapDetail(trap)}
+                                        key={catchSensor.id}
+                                        onClick={() => openCatchSensorDetail(catchSensor)}
                                         className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer group"
                                     >
                                         <div className="flex items-center space-x-4">
                                             <div className="bg-gray-50 p-2 rounded-xl text-gray-400">
-                                                <div className={`w-3 h-3 rounded-full ${trap.status === 'triggered' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : trap.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                                <div className={`w-3 h-3 rounded-full ${catchSensor.status === 'triggered' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : catchSensor.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
                                             </div>
                                             <div className="text-left">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-bold text-gray-900">{trap.alias || trap.name}</p>
-                                                    <span className={`text-[8px] font-black px-1 py-0.5 rounded-md border ${trap.type === 'LORAWAN' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                                                        {trap.type || 'NB-IOT'}
+                                                    <p className="text-sm font-bold text-gray-900">{catchSensor.alias || catchSensor.name}</p>
+                                                    <span className={`text-[8px] font-black px-1 py-0.5 rounded-md border ${catchSensor.type === 'LORAWAN' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                                        {catchSensor.type || 'NB-IOT'}
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] text-gray-400 font-medium">{trap.type === 'LORAWAN' ? trap.deviceId : trap.imei}</p>
+                                                <p className="text-[10px] text-gray-400 font-medium">{catchSensor.type === 'LORAWAN' ? catchSensor.deviceId : catchSensor.imei}</p>
                                             </div>
 
                                         </div>
@@ -803,7 +800,7 @@ const Setup = ({ onLogout }) => {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    openTrapDetail(trap);
+                                                    openCatchSensorDetail(catchSensor);
                                                 }}
                                                 className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
                                                 title="Freigeben"
@@ -811,7 +808,7 @@ const Setup = ({ onLogout }) => {
                                                 <User size={18} />
                                             </button>
                                             <button
-                                                onClick={(e) => handleDeleteTrap(trap.id, trap.name, e)}
+                                                onClick={(e) => handleDeleteCatchSensor(catchSensor.id, catchSensor.name, e)}
                                                 className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                                                 title="Löschen"
                                             >
@@ -827,12 +824,12 @@ const Setup = ({ onLogout }) => {
 
 
 
-                {/* Trap Details & Share Modal */}
+                {/* CatchSensor Details & Share Modal */}
                 {
-                    selectedTrap && (
+                    selectedCatch && (
                         <div
                             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-md p-4"
-                            onClick={() => setSelectedTrap(null)}
+                            onClick={() => setSelectedCatch(null)}
                         >
                             <div
                                 className="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
@@ -840,10 +837,10 @@ const Setup = ({ onLogout }) => {
                             >
                                 <div className="flex justify-between items-center mb-6">
                                     <div>
-                                        <h3 className="text-xl font-black text-gray-900">{selectedTrap.name}</h3>
-                                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{selectedTrap.location || 'Kein Standort'}</p>
+                                        <h3 className="text-xl font-black text-gray-900">{selectedCatch.name}</h3>
+                                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{selectedCatch.location || 'Kein Standort'}</p>
                                     </div>
-                                    <button onClick={() => setSelectedTrap(null)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
+                                    <button onClick={() => setSelectedCatch(null)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
                                         <X size={20} />
                                     </button>
                                 </div>
@@ -853,14 +850,14 @@ const Setup = ({ onLogout }) => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="bg-gray-50 p-4 rounded-2xl">
                                             <div className="text-[10px] uppercase font-black text-gray-400 mb-1">Status</div>
-                                            <div className={`font-bold ${selectedTrap.status === 'active' ? 'text-green-600' : 'text-gray-900'}`}>
-                                                {selectedTrap.status === 'active' ? 'Aktiv' : selectedTrap.status === 'triggered' ? 'Ausgelöst' : 'Inaktiv'}
+                                            <div className={`font-bold ${selectedCatch.status === 'active' ? 'text-green-600' : 'text-gray-900'}`}>
+                                                {selectedCatch.status === 'active' ? 'Aktiv' : selectedCatch.status === 'triggered' ? 'Ausgelöst' : 'Inaktiv'}
                                             </div>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-2xl">
-                                            <div className="text-[10px] uppercase font-black text-gray-400 mb-1">{selectedTrap.type === 'LORAWAN' ? 'Device ID' : 'IMEI'}</div>
-                                            <div className="font-mono text-sm font-bold text-gray-900 truncate" title={selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}>
-                                                {selectedTrap.type === 'LORAWAN' ? selectedTrap.deviceId : selectedTrap.imei}
+                                            <div className="text-[10px] uppercase font-black text-gray-400 mb-1">{selectedCatch.type === 'LORAWAN' ? 'Device ID' : 'IMEI'}</div>
+                                            <div className="font-mono text-sm font-bold text-gray-900 truncate" title={selectedCatch.type === 'LORAWAN' ? selectedCatch.deviceId : selectedCatch.imei}>
+                                                {selectedCatch.type === 'LORAWAN' ? selectedCatch.deviceId : selectedCatch.imei}
                                             </div>
                                         </div>
 
@@ -870,16 +867,16 @@ const Setup = ({ onLogout }) => {
                                     <div className="border-t border-gray-100 pt-6">
                                         <h4 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
                                             <User size={18} className="text-gray-400" />
-                                            <span>TrapSensor teilen</span>
+                                            <span>CatchSensor teilen</span>
                                         </h4>
 
-                                        {currentUser && selectedTrap.userId === currentUser.id ? (
+                                        {currentUser && selectedCatch.userId === currentUser.id ? (
                                             <>
                                                 <p className="text-xs text-gray-500 mb-4">
-                                                    Geben Sie eine E-Mail-Adresse ein, um diesen TrapSensor mit einem anderen Benutzer zu teilen.
+                                                    Geben Sie eine E-Mail-Adresse ein, um diesen CatchSensor mit einem anderen Benutzer zu teilen.
                                                 </p>
 
-                                                <form onSubmit={handleShareTrap} className="flex space-x-2 mb-6">
+                                                <form onSubmit={handleShareCatchSensor} className="flex space-x-2 mb-6">
                                                     <input
                                                         type="email"
                                                         placeholder="E-Mail Adresse"
@@ -897,10 +894,10 @@ const Setup = ({ onLogout }) => {
                                                     <div className="text-[10px] uppercase font-black text-gray-400">Bereits geteilt mit:</div>
                                                     {loadingShares ? (
                                                         <div className="text-sm text-gray-400 italic">Lade Freigaben...</div>
-                                                    ) : trapShares.length === 0 ? (
+                                                    ) : catchShares.length === 0 ? (
                                                         <div className="text-sm text-gray-400 italic">Noch mit niemandem geteilt.</div>
                                                     ) : (
-                                                        trapShares.map(share => (
+                                                        catchShares.map(share => (
                                                             <div key={share.userId} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
                                                                 <div className="flex items-center space-x-3">
                                                                     <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-400 text-xs font-bold border border-gray-100">
@@ -912,7 +909,7 @@ const Setup = ({ onLogout }) => {
                                                                     </div>
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => handleUnshareTrap(share.userId)}
+                                                                    onClick={() => handleUnshareCatchSensor(share.userId)}
                                                                     className="text-red-400 hover:text-red-600 p-2"
                                                                 >
                                                                     <Trash2 size={16} />
@@ -924,7 +921,7 @@ const Setup = ({ onLogout }) => {
                                             </>
                                         ) : (
                                             <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-xs font-medium">
-                                                ⚠️ Sie können diesen TrapSensor nicht teilen, da Sie nicht der Besitzer sind.
+                                                ⚠️ Sie können diesen CatchSensor nicht teilen, da Sie nicht der Besitzer sind.
                                             </div>
                                         )}
                                     </div>
@@ -986,7 +983,7 @@ const Setup = ({ onLogout }) => {
                                 </div>
                                 <div>
                                     <p className="text-sm font-bold text-gray-900">App Version</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">TrapSensor v1.2.0 (Build 2026.02)</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">CatchSensor v1.2.0 (Build 2026.02)</p>
                                 </div>
                             </div>
                         </div>

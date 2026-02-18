@@ -1,11 +1,10 @@
 const mqtt = require('mqtt');
-const Trap = require('../models/Trap');
+const CatchSensor = require('../models/CatchSensor');
 const Reading = require('../models/Reading');
 const User = require('../models/User');
-const TrapShare = require('../models/TrapShare');
+const CatchShare = require('../models/CatchShare');
 const PushSubscription = require('../models/PushSubscription');
 const LoraMetadata = require('../models/LoraMetadata');
-const { sendPushNotification } = require('./pushService');
 const { sendUnifiedNotification } = require('./notificationService');
 
 const setupMQTT = (io, aedes) => {
@@ -15,7 +14,7 @@ const setupMQTT = (io, aedes) => {
         aedes.on('publish', async (packet, client) => {
             if (packet.topic.startsWith('$SYS')) return; // Ignore system topics
             console.log(`MQTT: 📥 Internal Broker received publish on: ${packet.topic}`);
-            if (packet.topic && packet.topic.startsWith('traps/') && packet.topic.endsWith('/data')) {
+            if (packet.topic && packet.topic.startsWith('catches/') && packet.topic.endsWith('/data')) {
                 handleMQTTMessage(packet.topic, packet.payload, io, 'NB-IOT');
             }
         });
@@ -29,7 +28,7 @@ const setupMQTT = (io, aedes) => {
             port: process.env.NBIOT_MQTT_PORT || 1883,
             username: process.env.NBIOT_MQTT_USER,
             password: process.env.NBIOT_MQTT_PASS,
-            topic: process.env.NBIOT_MQTT_TOPIC || 'traps/+/data'
+            topic: process.env.NBIOT_MQTT_TOPIC || 'catches/+/data'
         }, (topic, payload) => handleMQTTMessage(topic, payload, io, 'NB-IOT'));
     }
 
@@ -191,26 +190,26 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
 
 
         if (normalizedData && deviceId) {
-            await updateTrapData(deviceId, normalizedData, io);
+            await updateCatchSensorData(deviceId, normalizedData, io);
         }
     } catch (err) {
         console.error('MQTT Handler Error:', err);
     }
 };
 
-const updateTrapData = async (deviceId, data, io) => {
+const updateCatchSensorData = async (deviceId, data, io) => {
     try {
-        let trap = await Trap.findOne({
+        let catchSensor = await CatchSensor.findOne({
             where: data.type === 'NB-IOT' ? { imei: deviceId } : { deviceId: deviceId },
-            include: data.type === 'LORAWAN' ? [{ model: LoraMetadata, as: 'lorawanTrapSensor' }] : []
+            include: data.type === 'LORAWAN' ? [{ model: LoraMetadata, as: 'lorawanCatchSensor' }] : []
         });
 
         console.log(`MQTT: Search result for ${deviceId}: ${trap ? 'Found' : 'NOT FOUND'}`);
 
-        if (!trap) {
+        if (!catchSensor) {
             console.log(`MQTT: 🆕 Auto-provisioning new device: ${deviceId}`);
             try {
-                trap = await Trap.create({
+                catchSensor = await CatchSensor.create({
                     name: `New Device ${deviceId}`,
                     alias: deviceId,
                     type: data.type,
@@ -227,29 +226,28 @@ const updateTrapData = async (deviceId, data, io) => {
         }
 
         // 1. Update Core Fields
-        trap.type = data.type;
+        catchSensor.type = data.type;
 
         if (data.type === 'NB-IOT') {
-            trap.imei = deviceId;
-            trap.status = data.status || 'active';
-            trap.batteryVoltage = data.batteryVoltage;
-            trap.batteryPercent = data.batteryPercent;
-            trap.rssi = data.rssi;
-            trap.lastSeen = new Date();
-            await trap.save();
+            catchSensor.imei = deviceId;
+            catchSensor.status = data.status || 'active';
+            catchSensor.batteryVoltage = data.batteryVoltage;
+            catchSensor.batteryPercent = data.batteryPercent;
+            catchSensor.rssi = data.rssi;
+            catchSensor.lastSeen = new Date();
+            await catchSensor.save();
         } else {
             // LoRaWAN Unified
-            trap.deviceId = deviceId;
-            trap.status = data.status || 'active';
-            trap.batteryVoltage = data.batteryVoltage; // Already in mV from normalizedData
-            trap.batteryPercent = data.batteryPercent;
-            trap.lastSeen = data.lastSeen || new Date();
+            catchSensor.deviceId = deviceId;
+            catchSensor.status = data.status || 'active';
+            catchSensor.batteryVoltage = data.batteryVoltage; // Already in mV from normalizedData
+            catchSensor.batteryPercent = data.batteryPercent;
+            catchSensor.lastSeen = data.lastSeen || new Date();
 
-            await trap.save();
+            await catchSensor.save();
 
-            // 2. Update Lora Metadata (lorawwanTrapSensor)
             await LoraMetadata.upsert({
-                trapId: trap.id,
+                catchSensorId: catchSensor.id,
                 loraRssi: data.rssi,
                 snr: data.snr,
                 spreadingFactor: data.spreadingFactor,
@@ -259,21 +257,19 @@ const updateTrapData = async (deviceId, data, io) => {
             });
 
             // 3. Refetch to get the updated metadata object
-            trap = await Trap.findByPk(trap.id, {
-                include: [{ model: LoraMetadata, as: 'lorawanTrapSensor' }]
+            catchSensor = await CatchSensor.findByPk(catchSensor.id, {
+                include: [{ model: LoraMetadata, as: 'lorawanCatchSensor' }]
             });
         }
 
 
-        // Create Reading
         await Reading.create({
-            trapId: trap.id,
-            value: data.batteryVoltage, // Store voltage in 'value'
+            catchSensorId: catchSensor.id,
+            value: data.batteryVoltage,
             type: data.status === 'triggered' ? 'alarm' : 'status',
             status: data.status,
             batteryPercent: data.batteryPercent,
             rssi: data.rssi,
-            // Capture LoRaWAN metadata for this specific reading
             snr: data.snr,
             gatewayId: data.gatewayId,
             gatewayCount: data.gatewayCount,
@@ -281,30 +277,29 @@ const updateTrapData = async (deviceId, data, io) => {
             spreadingFactor: data.spreadingFactor
         });
 
-        // 3. Emit Socket Update
-        const roomName = `user_${trap.userId}`;
-        io.to(roomName).emit('trapUpdate', trap);
-        console.log(`MQTT: 📢 Emitted update for ${trap.name} (${deviceId}). Status: ${trap.status}, Batt: ${trap.batteryPercent}%`);
+        const roomName = `user_${catchSensor.userId}`;
+        io.to(roomName).emit('catchSensorUpdate', catchSensor);
+        console.log(`MQTT: 📢 Emitted update for ${catchSensor.name} (${deviceId}). Status: ${catchSensor.status}, Batt: ${catchSensor.batteryPercent}%`);
 
 
-        // 4. Send Notifications
-        if (trap.userId) {
-            const user = await User.findByPk(trap.userId);
+        if (catchSensor.userId) {
+            const user = await User.findByPk(catchSensor.userId);
             if (user) {
                 const threshold = user.batteryThreshold || 20;
 
-                if (trap.status === 'triggered') {
-                    await sendUnifiedNotification(user, trap, 'ALARM');
-                } else if (trap.batteryPercent !== null && trap.batteryPercent < threshold) {
-                    await sendUnifiedNotification(user, trap, 'LOW_BATTERY');
+                if (catchSensor.status === 'triggered') {
+                    await sendUnifiedNotification(user, catchSensor, 'ALARM');
+                } else if (catchSensor.batteryPercent !== null && catchSensor.batteryPercent < threshold) {
+                    await sendUnifiedNotification(user, catchSensor, 'LOW_BATTERY');
                 }
             }
         }
 
     } catch (err) {
-        console.error('UpdateTrapData Error:', err);
+        console.error('updateCatchSensorData Error:', err);
     }
 };
 
 
 module.exports = { setupMQTT };
+

@@ -12,7 +12,7 @@ async function simulate() {
         // 1. Find a trap
         const trap = await Trap.findOne({ where: { imei: '78978746854546' } });
         if (!trap) {
-            console.error('❌ No traps found in DB!');
+            console.error('❌ No Catchs found in DB!');
             process.exit(1);
         }
 
@@ -24,7 +24,7 @@ async function simulate() {
         client.on('connect', () => {
             console.log('✅ MQTT Connected.');
 
-            const topic = `traps/${trap.imei}/data`;
+            const topic = `Catchs/${trap.imei}/data`;
 
             // A) First set to Active (to ensure state change)
             const payloadActive = Buffer.from([0x01, 0x10, 0x68, 0x50]); // Active
@@ -53,3 +53,4 @@ async function simulate() {
 }
 
 simulate();
+

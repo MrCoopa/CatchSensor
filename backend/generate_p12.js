@@ -13,7 +13,7 @@ const privateKey = forge.pki.privateKeyFromPem(keyPem);
 // Create P12
 const p12Asn1 = forge.pkcs12.toPkcs12Asn1(privateKey, [cert], '1234', {
     algorithm: '3des',
-    friendlyName: 'TrapSensor',
+    friendlyName: 'CatchSensor',
     generateLocalKeyId: true
 });
 const p12Der = forge.asn1.toDer(p12Asn1).getBytes();
@@ -23,3 +23,4 @@ const p12Buffer = Buffer.from(p12Der, 'binary');
 fs.writeFileSync('server.p12', p12Buffer);
 
 console.log('P12 Generated: server.p12 (Password: 1234)');
+

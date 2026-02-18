@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Trap = require('./Trap');
+const CatchSensor = require('./CatchSensor');
 
 const Reading = sequelize.define('Reading', {
     id: {
@@ -8,11 +8,11 @@ const Reading = sequelize.define('Reading', {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
     },
-    trapId: {
+    catchSensorId: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-            model: Trap,
+            model: CatchSensor,
             key: 'id',
         },
     },
@@ -22,10 +22,10 @@ const Reading = sequelize.define('Reading', {
     },
     type: {
         type: DataTypes.STRING,
-        allowNull: false, // e.g., 'vibration', 'status'
+        allowNull: false,
     },
     status: {
-        type: DataTypes.STRING, // 'active', 'triggered'
+        type: DataTypes.STRING,
         allowNull: true,
     },
     batteryPercent: {
@@ -40,7 +40,6 @@ const Reading = sequelize.define('Reading', {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
     },
-    // LoRaWAN Specific Metadata (Copied from LoraMetadata for history)
     snr: { type: DataTypes.FLOAT, allowNull: true },
     gatewayId: { type: DataTypes.STRING, allowNull: true },
     gatewayCount: { type: DataTypes.INTEGER, allowNull: true },
@@ -50,7 +49,7 @@ const Reading = sequelize.define('Reading', {
     timestamps: false,
     indexes: [
         {
-            fields: ['trapId']
+            fields: ['catchSensorId']
         },
         {
             fields: ['timestamp']
@@ -58,7 +57,8 @@ const Reading = sequelize.define('Reading', {
     ]
 });
 
-Trap.hasMany(Reading, { foreignKey: 'trapId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Reading.belongsTo(Trap, { foreignKey: 'trapId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+CatchSensor.hasMany(Reading, { foreignKey: 'catchSensorId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Reading.belongsTo(CatchSensor, { foreignKey: 'catchSensorId', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 module.exports = Reading;
+

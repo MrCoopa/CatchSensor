@@ -36,11 +36,11 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
                 <div className="flex items-center justify-center space-x-4 mb-10">
                     <img
                         src="/icons/fox-logo.png"
-                        alt="TrapSensor Logo"
+                        alt="CatchSensor Logo"
                         className="w-32 h-32 rounded-[2.5rem] shadow-2xl border-2 border-[#1b3a2e]/10 object-contain bg-white"
                     />
                     <div className="text-left">
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter leading-none">TrapSensor</h1>
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter leading-none">CatchSensor</h1>
                         <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Professional</p>
                     </div>
                 </div>

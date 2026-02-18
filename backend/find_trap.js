@@ -14,13 +14,13 @@ const sequelize = new Sequelize(
     }
 );
 
-async function findTrap() {
+async function findCatch() {
     try {
         await sequelize.authenticate();
         console.log('Connection has been established successfully.');
 
-        const traps = await Trap.findAll();
-        const match = traps.find(t =>
+        const Catchs = await Trap.findAll();
+        const match = Catchs.find(t =>
             (t.name && t.name.includes('Brückenhof')) ||
             (t.alias && t.alias.includes('Brückenhof'))
         );
@@ -30,7 +30,7 @@ async function findTrap() {
         } else {
             console.log('No trap found with name Brückenhof');
             // List all for context
-            console.log('Available traps:', traps.map(t => `${t.name} (${t.alias}) - ${t.imei || t.deviceId}`).join(', '));
+            console.log('Available Catchs:', Catchs.map(t => `${t.name} (${t.alias}) - ${t.imei || t.deviceId}`).join(', '));
         }
 
     } catch (error) {
@@ -40,4 +40,5 @@ async function findTrap() {
     }
 }
 
-findTrap();
+findCatch();
+

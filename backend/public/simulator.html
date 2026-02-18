@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrapSensor | MQTT Simulator</title>
+    <title>CatchSensor | MQTT Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -129,7 +129,7 @@
             msg.className = 'hidden';
 
             try {
-                const res = await fetch('/api/traps/simulate', {
+                const res = await fetch('/api/Catchs/simulate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -1,14 +1,14 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const TrapShare = require('./TrapShare');
+const CatchShare = require('./CatchShare');
 
-const Trap = sequelize.define('Trap', {
+const CatchSensor = sequelize.define('CatchSensor', {
     id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
     },
-    name: { // Keeping 'name' for backward compatibility in codebase, but using 'alias' as the main field
+    name: {
         type: DataTypes.STRING,
         allowNull: false,
     },
@@ -24,25 +24,22 @@ const Trap = sequelize.define('Trap', {
         type: DataTypes.ENUM('NB-IOT', 'LORAWAN'),
         defaultValue: 'NB-IOT',
     },
-    // NB-IoT Identifiers
     imei: {
         type: DataTypes.STRING,
         unique: true,
         allowNull: true,
     },
-    // LoRaWAN Identifiers
     deviceId: {
         type: DataTypes.STRING,
         unique: true,
         allowNull: true,
     },
-    // Unified Telemetry
     status: {
         type: DataTypes.ENUM('active', 'inactive', 'triggered'),
         defaultValue: 'inactive',
     },
     batteryVoltage: {
-        type: DataTypes.INTEGER, // Always in mV
+        type: DataTypes.INTEGER,
         allowNull: true,
     },
     batteryPercent: {
@@ -50,15 +47,13 @@ const Trap = sequelize.define('Trap', {
         allowNull: true,
     },
     rssi: {
-        type: DataTypes.INTEGER, // Shared/NB RSSI
+        type: DataTypes.INTEGER,
         allowNull: true,
     },
     lastSeen: {
         type: DataTypes.DATE,
         allowNull: true,
     },
-
-    // Alerting & Throttling
     batteryThreshold: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -76,7 +71,7 @@ const Trap = sequelize.define('Trap', {
         allowNull: true,
     }
 }, {
-    tableName: 'TrapSensors',
+    tableName: 'CatchSensors',
     timestamps: true,
     indexes: [
         { unique: true, fields: ['imei'] },
@@ -87,7 +82,8 @@ const Trap = sequelize.define('Trap', {
     ]
 });
 
-Trap.hasMany(TrapShare, { foreignKey: 'trapId' });
-TrapShare.belongsTo(Trap, { foreignKey: 'trapId' });
+CatchSensor.hasMany(CatchShare, { foreignKey: 'catchSensorId' });
+CatchShare.belongsTo(CatchSensor, { foreignKey: 'catchSensorId' });
 
-module.exports = Trap;
+module.exports = CatchSensor;
+

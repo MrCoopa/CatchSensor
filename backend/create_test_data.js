@@ -36,7 +36,7 @@ async function createTestData() {
             const batteryDecay = Math.max(0, 100 - (24 - i) * 0.5); // Slow decay
 
             testReadings.push({
-                trapId: trap.id,
+                CatchId: trap.id,
                 value: 3800 - (24 - i) * 10, // Voltage in mV
                 type: 'status',
                 status: 'active',
@@ -53,7 +53,7 @@ async function createTestData() {
 
         // 2. An alarm event 2 hours ago
         testReadings.push({
-            trapId: trap.id,
+            CatchId: trap.id,
             value: 3650,
             type: 'alarm',
             status: 'triggered',
@@ -69,7 +69,7 @@ async function createTestData() {
 
         // 3. A final status update (resurrection) 1 hour ago
         testReadings.push({
-            trapId: trap.id,
+            CatchId: trap.id,
             value: 3640,
             type: 'status',
             status: 'active',
@@ -102,3 +102,4 @@ async function createTestData() {
 }
 
 createTestData();
+

@@ -3,14 +3,14 @@ import { X, Battery, Signal } from 'lucide-react';
 import BatteryIndicator from './BatteryIndicator';
 import SignalIndicator from './SignalIndicator';
 
-const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
+const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
     const [readings, setReadings] = useState([]);
 
     useEffect(() => {
-        if (isOpen && trap) {
+        if (isOpen && catchSensor) {
             const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : `http://${window.location.hostname}:5000`;
             const token = localStorage.getItem('token');
-            fetch(`${baseUrl}/api/readings/${trap.id}`, {
+            fetch(`${baseUrl}/api/readings/${catchSensor.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
                 .then(res => {
@@ -30,59 +30,59 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                     setReadings([]);
                 });
         }
-    }, [isOpen, trap]);
+    }, [isOpen, catchSensor]);
 
-    if (!isOpen || !trap) return null;
+    if (!isOpen || !catchSensor) return null;
 
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
             <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-xl w-full p-8 max-h-[90vh] flex flex-col relative">
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900 leading-tight">{trap.name}</h2>
-                        {trap.location && <p className="text-gray-400 text-sm font-medium">{trap.location}</p>}
+                        <h2 className="text-2xl font-bold text-gray-900 leading-tight">{catchSensor.name}</h2>
+                        {catchSensor.location && <p className="text-gray-400 text-sm font-medium">{catchSensor.location}</p>}
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
                         <X size={24} />
                     </button>
                 </div>
 
-                {trap.lastSeen && (
+                {catchSensor.lastSeen && (
                     <div className="grid grid-cols-2 gap-4 mb-8">
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <BatteryIndicator percentage={trap.batteryPercent || 0} className="mr-2" /> Batterie
+                                <BatteryIndicator percentage={catchSensor.batteryPercent || 0} className="mr-2" /> Batterie
                             </div>
-                            <div className="text-lg font-bold text-gray-900">{((trap.batteryVoltage || 0) / 1000).toFixed(1).replace('.', ',')} V</div>
+                            <div className="text-lg font-bold text-gray-900">{((catchSensor.batteryVoltage || 0) / 1000).toFixed(1).replace('.', ',')} V</div>
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col justify-center">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <SignalIndicator rssi={trap.type === 'LORAWAN' ? trap.lorawanTrapSensor?.loraRssi : trap.rssi} className="mr-2" /> Signal
+                                <SignalIndicator rssi={catchSensor.type === 'LORAWAN' ? catchSensor.lorawanCatchSensor?.loraRssi : catchSensor.rssi} className="mr-2" /> Signal
                             </div>
                             <div className="flex flex-col">
-                                <div className="text-lg font-bold text-gray-900 leading-none">{trap.type === 'LORAWAN' ? (trap.lorawanTrapSensor?.loraRssi || 0) : (trap.rssi || 0)} dBm</div>
-                                {trap.lorawanTrapSensor && (
+                                <div className="text-lg font-bold text-gray-900 leading-none">{catchSensor.type === 'LORAWAN' ? (catchSensor.lorawanCatchSensor?.loraRssi || 0) : (catchSensor.rssi || 0)} dBm</div>
+                                {catchSensor.lorawanCatchSensor && (
                                     <div className="grid grid-cols-2 gap-2 mt-2 p-2 bg-white/50 rounded-lg border border-gray-100">
                                         <div className="flex flex-col">
                                             <span className="text-[8px] uppercase text-gray-400 font-bold">SNR</span>
-                                            <span className="text-[10px] font-bold text-gray-700">{Number(trap.lorawanTrapSensor.snr).toFixed(1)}</span>
+                                            <span className="text-[10px] font-bold text-gray-700">{Number(catchSensor.lorawanCatchSensor.snr).toFixed(1)}</span>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[8px] uppercase text-gray-400 font-bold">SF</span>
-                                            <span className="text-[10px] font-bold text-gray-700">SF{trap.lorawanTrapSensor.spreadingFactor}</span>
+                                            <span className="text-[10px] font-bold text-gray-700">SF{catchSensor.lorawanCatchSensor.spreadingFactor}</span>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[8px] uppercase text-gray-400 font-bold">Gateways</span>
-                                            <span className="text-[10px] font-bold text-gray-700">{trap.lorawanTrapSensor.gatewayCount || 1}</span>
+                                            <span className="text-[10px] font-bold text-gray-700">{catchSensor.lorawanCatchSensor.gatewayCount || 1}</span>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[8px] uppercase text-gray-400 font-bold">fCnt</span>
-                                            <span className="text-[10px] font-bold text-gray-700">{trap.lorawanTrapSensor.fCnt || 0}</span>
+                                            <span className="text-[10px] font-bold text-gray-700">{catchSensor.lorawanCatchSensor.fCnt || 0}</span>
                                         </div>
-                                        {trap.lorawanTrapSensor.gatewayId && (
+                                        {catchSensor.lorawanCatchSensor.gatewayId && (
                                             <div className="flex flex-col col-span-2">
                                                 <span className="text-[8px] uppercase text-gray-400 font-bold">Last Gateway</span>
-                                                <span className="text-[9px] font-bold text-gray-700 truncate">{trap.lorawanTrapSensor.gatewayId}</span>
+                                                <span className="text-[9px] font-bold text-gray-700 truncate">{catchSensor.lorawanCatchSensor.gatewayId}</span>
                                             </div>
                                         )}
                                     </div>
@@ -129,7 +129,7 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
                                         </div>
 
                                         {/* Extended Metadata (LoRaWAN only) */}
-                                        {trap.type === 'LORAWAN' && (reading.snr !== undefined || reading.spreadingFactor) && (
+                                        {catchSensor.type === 'LORAWAN' && (reading.snr !== undefined || reading.spreadingFactor) && (
                                             <>
                                                 {reading.snr !== undefined && (
                                                     <div className="flex items-center bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm shrink-0">
@@ -182,4 +182,4 @@ const TrapDetailsModal = ({ trap, isOpen, onClose }) => {
     );
 };
 
-export default TrapDetailsModal;
+export default CatchDetailsModal;

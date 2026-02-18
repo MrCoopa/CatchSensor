@@ -7,3 +7,4 @@ router.post('/subscribe', protect, notificationController.subscribe);
 router.post('/test', protect, notificationController.testNotification);
 
 module.exports = router;
+

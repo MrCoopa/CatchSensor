@@ -33,7 +33,7 @@ precacheAndRoute(self.__WB_MANIFEST || [])
 self.addEventListener('push', (event) => {
     broadcastLog('SW: Push-Event empfangen 🔔');
     let data = {
-        title: 'TrapSensor Meldung',
+        title: 'CatchSensor Meldung',
         body: 'Es gibt eine neue Information.',
     };
 
@@ -55,10 +55,10 @@ self.addEventListener('push', (event) => {
         broadcastLog('SW: Fehler beim Verarbeiten: ' + e.message, 'error');
     }
 
-    const title = data.title || 'TrapSensor!';
+    const title = data.title || 'CatchSensor!';
     const options = {
         body: data.body || 'Update verfügbar.',
-        tag: 'trapsensor-notification',
+        tag: 'catchsensor-notification',
         renotify: true,
         requireInteraction: true,
         data: data.data || { url: '/' }

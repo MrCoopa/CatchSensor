@@ -7,7 +7,7 @@ async function seed() {
         await sequelize.sync({ force: true });
         console.log('Database cleared.');
 
-        const traps = await Trap.bulkCreate([
+        const Catchs = await Trap.bulkCreate([
             {
                 name: 'Hühnermobil',
                 location: 'Wildacker',
@@ -20,11 +20,11 @@ async function seed() {
             }
         ]);
 
-        console.log(`Seeded ${traps.length} real traps.`);
+        console.log(`Seeded ${Catchs.length} real Catchs.`);
 
-        for (const trap of traps) {
+        for (const trap of Catchs) {
             await Reading.create({
-                trapId: trap.id,
+                CatchId: trap.id,
                 value: trap.batteryVoltage,
                 type: 'status',
                 timestamp: new Date()
@@ -39,3 +39,4 @@ async function seed() {
 }
 
 seed();
+

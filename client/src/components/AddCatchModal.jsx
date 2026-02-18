@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import QRScanner from './QRScanner';
 
-const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
+const AddCatchModal = ({ isOpen, onClose, onAdd }) => {
     const [formData, setFormData] = useState({
         name: '',
         location: '',
@@ -30,7 +30,7 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
         setError('');
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/traps', {
+            const response = await fetch('/api/catches', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -39,8 +39,8 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
                 body: JSON.stringify(formData),
             });
             if (response.ok) {
-                const newTrap = await response.json();
-                onAdd(newTrap);
+                const newCatch = await response.json();
+                onAdd(newCatch);
                 setFormData({ name: '', location: '', imei: '', deviceId: '', type: 'NB-IOT' });
                 onClose();
 
@@ -58,7 +58,7 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
             <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full p-8 relative">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Neuen TrapSensor hinzufügen</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Neuen CatchSensor hinzufügen</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X size={24} />
                     </button>
@@ -165,4 +165,4 @@ const AddTrapModal = ({ isOpen, onClose, onAdd }) => {
     );
 };
 
-export default AddTrapModal;
+export default AddCatchModal;

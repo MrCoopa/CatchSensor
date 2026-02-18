@@ -1,14 +1,14 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Trap = require('./Trap');
+const CatchSensor = require('./CatchSensor');
 
 const LoraMetadata = sequelize.define('LoraMetadata', {
-    trapId: {
+    catchSensorId: {
         type: DataTypes.UUID,
         allowNull: false,
         primaryKey: true,
         references: {
-            model: Trap,
+            model: CatchSensor,
             key: 'id',
         },
     },
@@ -42,8 +42,9 @@ const LoraMetadata = sequelize.define('LoraMetadata', {
 });
 
 
-Trap.hasOne(LoraMetadata, { foreignKey: 'trapId', as: 'lorawanTrapSensor', onDelete: 'CASCADE' });
-LoraMetadata.belongsTo(Trap, { foreignKey: 'trapId' });
+CatchSensor.hasOne(LoraMetadata, { foreignKey: 'catchSensorId', as: 'lorawanCatchSensor', onDelete: 'CASCADE' });
+LoraMetadata.belongsTo(CatchSensor, { foreignKey: 'catchSensorId' });
 
 
 module.exports = LoraMetadata;
+

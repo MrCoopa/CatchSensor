@@ -13,7 +13,7 @@ require('dotenv').config();
 // No, server.js reacts to MQTT or API.
 
 // Best way: Send a mock MQTT message or HTTP status update.
-// Let's assume we have an endpoint /api/traps/:id/status or similar?
+// Let's assume we have an endpoint /api/Catchs/:id/status or similar?
 // Checking server.js...
 
 // Plan: 
@@ -30,3 +30,4 @@ require('dotenv').config();
 // View server.js first.
 const fs = require('fs');
 console.log("Please check server.js content first.");
+

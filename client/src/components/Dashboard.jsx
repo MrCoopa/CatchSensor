@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import TrapCard from './TrapCard';
-import AddTrapModal from './AddTrapModal';
-import TrapDetailsModal from './TrapDetailsModal';
+import CatchCard from './CatchCard';
+import AddCatchModal from './AddCatchModal';
+import CatchDetailsModal from './CatchDetailsModal';
 import { ArrowLeft } from 'lucide-react';
 
 const Dashboard = ({ onLogout }) => {
-    const [traps, setTraps] = useState([]);
+    const [catches, setCatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedTrap, setSelectedTrap] = useState(null);
+    const [selectedCatch, setSelectedCatch] = useState(null);
 
     const baseUrl = '';
 
-    const fetchTraps = async () => {
+    const fetchCatches = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${baseUrl}/api/traps`, {
+            const response = await fetch(`${baseUrl}/api/catches`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -27,10 +27,10 @@ const Dashboard = ({ onLogout }) => {
 
             const data = await response.json();
             if (Array.isArray(data)) {
-                setTraps(data);
+                setCatches(data);
             }
         } catch (error) {
-            console.error('Fehler beim Abrufen der Fallen:', error);
+            console.error('Fehler beim Abrufen der Melder:', error);
         } finally {
             setLoading(false);
         }
@@ -51,7 +51,7 @@ const Dashboard = ({ onLogout }) => {
     const currentUserId = getCurrentUserId();
 
     useEffect(() => {
-        fetchTraps();
+        fetchCatches();
 
         const token = localStorage.getItem('token');
         if (!token) return;
@@ -66,24 +66,24 @@ const Dashboard = ({ onLogout }) => {
             console.error('Socket Authentication Error:', err.message);
         });
 
-        socket.on('trapUpdate', (updatedTrap) => {
-            console.log('Socket: Received update for trap:', updatedTrap.id);
-            setTraps(prevTraps =>
-                prevTraps.map(trap => trap.id === updatedTrap.id ? updatedTrap : trap)
+        socket.on('catchSensorUpdate', (updatedCatch) => {
+            console.log('Socket: Received update for detector:', updatedCatch.id);
+            setCatches(prevCatches =>
+                prevCatches.map(c => c.id === updatedCatch.id ? updatedCatch : c)
             );
         });
 
         const handleOpenModal = () => setIsAddModalOpen(true);
-        window.addEventListener('open-add-trap', handleOpenModal);
+        window.addEventListener('open-add-catch-sensor', handleOpenModal);
 
         return () => {
             socket.disconnect();
-            window.removeEventListener('open-add-trap', handleOpenModal);
+            window.removeEventListener('open-add-catch-sensor', handleOpenModal);
         };
     }, []);
 
-    const handleAddTrap = (newTrap) => {
-        setTraps([...traps, newTrap]);
+    const handleAddCatch = (newCatch) => {
+        setCatches([...catches, newCatch]);
     };
 
     if (loading) {
@@ -102,10 +102,10 @@ const Dashboard = ({ onLogout }) => {
                     <div className="flex items-center space-x-3">
                         <img
                             src="/icons/fox-logo.png"
-                            alt="TrapSensor Logo"
+                            alt="CatchSensor Logo"
                             className="w-20 h-20 rounded-3xl shadow-xl border border-white/20 object-contain bg-white/5"
                         />
-                        <h1 className="text-2xl font-black tracking-tight">TrapSensor</h1>
+                        <h1 className="text-2xl font-black tracking-tight">CatchSensor</h1>
                     </div>
                     <div className="flex items-center space-x-3">
                         <div className="bg-green-600/90 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
@@ -116,34 +116,34 @@ const Dashboard = ({ onLogout }) => {
             </header>
 
             <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 mb-24">
-                {traps.length === 0 ? (
+                {catches.length === 0 ? (
                     <div className="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-gray-200 shadow-sm">
-                        <p className="text-gray-500 font-medium">Noch keine Fallen. Klicken Sie auf "+ Neu".</p>
+                        <p className="text-gray-500 font-medium">Noch keine Melder. Klicken Sie auf "+ Neu".</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {traps.map((trap) => (
-                            <TrapCard
-                                key={trap.id}
-                                trap={trap}
-                                isShared={trap.userId !== currentUserId}
-                                onViewHistory={(t) => setSelectedTrap(t)}
+                        {catches.map((c) => (
+                            <CatchCard
+                                key={c.id}
+                                catchSensor={c}
+                                isShared={c.userId !== currentUserId}
+                                onViewHistory={(t) => setSelectedCatch(t)}
                             />
                         ))}
                     </div>
                 )}
             </main>
 
-            <AddTrapModal
+            <AddCatchModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                onAdd={handleAddTrap}
+                onAdd={handleAddCatch}
             />
 
-            <TrapDetailsModal
-                isOpen={!!selectedTrap}
-                trap={selectedTrap}
-                onClose={() => setSelectedTrap(null)}
+            <CatchDetailsModal
+                isOpen={!!selectedCatch}
+                catchSensor={selectedCatch}
+                onClose={() => setSelectedCatch(null)}
             />
         </div>
     );

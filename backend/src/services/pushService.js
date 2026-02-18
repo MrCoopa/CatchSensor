@@ -8,7 +8,7 @@ const PRIVATE_VAPID_KEY = process.env.VAPID_PRIVATE_KEY;
 
 if (PUBLIC_VAPID_KEY && PRIVATE_VAPID_KEY) {
     webpush.setVapidDetails(
-        'mailto:admin@trapsensor.de',
+        'mailto:admin@CatchSensor.de',
         PUBLIC_VAPID_KEY,
         PRIVATE_VAPID_KEY
     );
@@ -57,3 +57,4 @@ const sendPushNotification = async (trap, type, subscription) => {
 };
 
 module.exports = { sendPushNotification };
+

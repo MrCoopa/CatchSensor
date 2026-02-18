@@ -23,3 +23,4 @@ const PushSubscription = sequelize.define('PushSubscription', {
 });
 
 module.exports = PushSubscription;
+

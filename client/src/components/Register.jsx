@@ -47,11 +47,11 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                 <div className="flex items-center justify-center space-x-4 mb-10">
                     <img
                         src="/icons/fox-logo.png"
-                        alt="TrapSensor Logo"
+                        alt="CatchSensor Logo"
                         className="w-28 h-28 rounded-[2rem] shadow-xl border-2 border-[#1b3a2e]/5 object-contain bg-white"
                     />
                     <div className="text-left">
-                        <h1 className="text-2xl font-black text-gray-900 tracking-tighter leading-none">TrapSensor</h1>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tighter leading-none">CatchSensor</h1>
                         <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-0.5">Konto erstellen</p>
                     </div>
                 </div>

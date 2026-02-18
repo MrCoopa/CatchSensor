@@ -1,5 +1,5 @@
 {
-  "name": "trapsensor",
+  "name": "catchsensor",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,16 +8,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MrCoopa/TrapSensor.git"
+    "url": "git+https://github.com/MrCoopa/CatchSensor.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/MrCoopa/TrapSensor/issues"
+    "url": "https://github.com/MrCoopa/CatchSensor/issues"
   },
-  "homepage": "https://github.com/MrCoopa/TrapSensor#readme",
+  "homepage": "https://github.com/MrCoopa/CatchSensor#readme",
   "dependencies": {
     "aedes": "^1.0.0",
     "aedes-server-factory": "^0.2.1",

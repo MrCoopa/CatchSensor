@@ -12,9 +12,9 @@ const LoraMetadata = require('./src/models/LoraMetadata'); // Ensure model is lo
         await Reading.destroy({ where: {}, truncate: false });
         console.log('✅ Readings cleared.');
 
-        console.log('🗑️  Deleting all TRAPS (Cascades to Metadata & Shares)...');
+        console.log('🗑️  Deleting all CatchS (Cascades to Metadata & Shares)...');
         await Trap.destroy({ where: {}, truncate: false });
-        console.log('✅ Traps cleared.');
+        console.log('✅ Catchs cleared.');
 
         // Verify LoraMetadata is empty
         const metadataCount = await LoraMetadata.count();
@@ -33,3 +33,4 @@ const LoraMetadata = require('./src/models/LoraMetadata'); // Ensure model is lo
         process.exit(1);
     }
 })();
+

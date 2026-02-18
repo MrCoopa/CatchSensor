@@ -38,9 +38,9 @@ export default defineConfig({
       includeAssets: ['vite.svg'],
       manifestFilename: 'manifest.webmanifest', // Explicitly set it
       manifest: {
-        name: 'TrapSensor Professional',
-        short_name: 'TrapSensor',
-        description: 'Professionelle Fallenüberwachung für Reviere',
+        name: 'CatchSensor Professional',
+        short_name: 'CatchSensor',
+        description: 'Professionelle Fangüberwachung für Reviere',
         id: '/',
         theme_color: '#1b3a2e',
         background_color: '#1b3a2e',

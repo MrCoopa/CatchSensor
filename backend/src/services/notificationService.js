@@ -83,3 +83,4 @@ const sendUnifiedNotification = async (user, trap, type, customMessage = null) =
 };
 
 module.exports = { sendUnifiedNotification };
+

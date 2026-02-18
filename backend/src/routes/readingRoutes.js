@@ -3,27 +3,27 @@ const Reading = require('../models/Reading');
 const Trap = require('../models/Trap');
 const router = express.Router();
 
-const TrapShare = require('../models/TrapShare');
+const CatchShare = require('../models/CatchShare');
 
 // Get readings for a specific trap
-router.get('/:trapId', async (req, res) => {
+router.get('/:CatchId', async (req, res) => {
     try {
-        const trapId = req.params.trapId;
+        const CatchId = req.params.CatchId;
         const userId = req.user.id;
 
         // Check if user is owner
-        const trap = await Trap.findOne({ where: { id: trapId, userId: userId } });
+        const trap = await Trap.findOne({ where: { id: CatchId, userId: userId } });
 
         if (!trap) {
             // Check if user has shared access
-            const share = await TrapShare.findOne({ where: { trapId: trapId, userId: userId } });
+            const share = await CatchShare.findOne({ where: { CatchId: CatchId, userId: userId } });
             if (!share) {
                 return res.status(403).json({ error: 'Access denied' });
             }
         }
 
         const readings = await Reading.findAll({
-            where: { trapId: trapId },
+            where: { CatchId: CatchId },
             order: [['timestamp', 'DESC']],
             limit: 50
         });
@@ -36,13 +36,13 @@ router.get('/:trapId', async (req, res) => {
 // Submit a new reading
 router.post('/', async (req, res) => {
     try {
-        const { trapId, value, type, batteryVoltage, batteryPercent, signalStrength, status } = req.body;
+        const { CatchId, value, type, batteryVoltage, batteryPercent, signalStrength, status } = req.body;
 
         // Check if trap exists
-        const trap = await Trap.findByPk(trapId);
+        const trap = await Trap.findByPk(CatchId);
         if (!trap) return res.status(404).json({ error: 'Trap not found' });
 
-        const newReading = await Reading.create({ trapId, value, type });
+        const newReading = await Reading.create({ CatchId, value, type });
 
         // Update trap metrics
         const updates = { lastReading: new Date() };
@@ -54,8 +54,8 @@ router.post('/', async (req, res) => {
         await trap.update(updates);
 
         // Broadcast update via socket.io
-        const updatedTrap = await Trap.findByPk(trapId);
-        req.io.emit('trapUpdate', updatedTrap);
+        const updatedCatch = await Trap.findByPk(CatchId);
+        req.io.emit('CatchUpdate', updatedCatch);
 
         res.status(201).json(newReading);
     } catch (error) {
@@ -64,3 +64,4 @@ router.post('/', async (req, res) => {
 });
 
 module.exports = router;
+

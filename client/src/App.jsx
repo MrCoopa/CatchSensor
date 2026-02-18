@@ -56,13 +56,13 @@ function App() {
             className={`flex flex-col items-center space-y-1 transition-colors ${view === 'dashboard' ? 'text-green-700' : 'hover:text-green-700'}`}
           >
             <Home size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Fallen</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Melder</span>
           </button>
 
           <button
             onClick={() => {
               if (view !== 'dashboard') setView('dashboard');
-              setTimeout(() => window.dispatchEvent(new CustomEvent('open-add-trap')), 100);
+              setTimeout(() => window.dispatchEvent(new CustomEvent('open-add-catch-sensor')), 100);
             }}
             className="flex flex-col items-center space-y-1 hover:text-green-700 transition-colors"
           >

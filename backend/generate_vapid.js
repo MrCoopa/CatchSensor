@@ -5,3 +5,4 @@ const vapidKeys = webpush.generateVAPIDKeys();
 
 fs.writeFileSync('vapid_keys.json', JSON.stringify(vapidKeys, null, 2));
 console.log('Keys saved to vapid_keys.json');
+

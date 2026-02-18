@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const bcrypt = require('bcryptjs');
-const TrapShare = require('./TrapShare');
+const CatchShare = require('./CatchShare');
 
 const User = sequelize.define('User', {
     id: {
@@ -62,7 +62,8 @@ User.prototype.comparePassword = async function (candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-User.hasMany(TrapShare, { foreignKey: 'userId' });
-TrapShare.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(CatchShare, { foreignKey: 'userId' });
+CatchShare.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = User;
+

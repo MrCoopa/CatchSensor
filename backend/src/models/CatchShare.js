@@ -1,17 +1,17 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const TrapShare = sequelize.define('TrapShare', {
+const CatchShare = sequelize.define('CatchShare', {
     id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
     },
-    trapId: {
+    catchSensorId: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-            model: 'TrapSensors',
+            model: 'CatchSensors',
             key: 'id',
         },
         onDelete: 'CASCADE',
@@ -34,9 +34,10 @@ const TrapShare = sequelize.define('TrapShare', {
     indexes: [
         {
             unique: true,
-            fields: ['trapId', 'userId']
+            fields: ['catchSensorId', 'userId']
         }
     ]
 });
 
-module.exports = TrapShare;
+module.exports = CatchShare;
+

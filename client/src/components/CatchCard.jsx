@@ -10,11 +10,11 @@ const formatTimeAgo = (date) => {
     return 'Gestern';
 };
 
-const TrapCard = ({ trap, onViewHistory, isShared }) => {
-    const isLoRa = trap.type === 'LORAWAN';
-    const status = trap.status;
-    const voltage = trap.batteryVoltage; // mV
-    const lastUpdate = trap.lastSeen;
+const CatchCard = ({ catchSensor, onViewHistory, isShared }) => {
+    const isLoRa = catchSensor.type === 'LORAWAN';
+    const status = catchSensor.status;
+    const voltage = catchSensor.batteryVoltage; // mV
+    const lastUpdate = catchSensor.lastSeen;
 
     const statusConfig = {
         active: {
@@ -37,8 +37,6 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
             text: 'text-red-600',
             label: 'FANG GEMELDET!',
             timeColor: 'text-gray-400',
-            timeColor: 'text-gray-400',
-            // animate: 'animate-pulse' // Disabled by request
         },
     };
 
@@ -46,13 +44,13 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
 
     return (
         <div
-            onClick={() => onViewHistory(trap)}
+            onClick={() => onViewHistory(catchSensor)}
             className={`relative cursor-pointer bg-white rounded-2xl shadow-sm p-5 border-y border-r border-gray-100 transition-all active:scale-[0.98] ${config.border} ${config.bg} ${config.animate || ''}`}
         >
             <div className="flex justify-between items-start mb-0.5">
                 <div className="flex flex-col">
                     <h3 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                        {trap.alias || trap.name}
+                        {catchSensor.alias || catchSensor.name}
                         {isShared && (
                             <Users size={16} className="text-blue-500" />
                         )}
@@ -62,9 +60,9 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
                     {lastUpdate ? formatTimeAgo(lastUpdate) : 'Nie'}
                 </span>
             </div>
-            {trap.location && (
+            {catchSensor.location && (
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide my-2">
-                    {trap.location}
+                    {catchSensor.location}
                 </p>
             )}
 
@@ -75,24 +73,24 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
             {lastUpdate && (
                 <div className="flex items-center space-x-8 text-gray-500">
                     <div className="flex items-center space-x-2">
-                        <BatteryIndicator percentage={trap.batteryPercent || 0} />
+                        <BatteryIndicator percentage={catchSensor.batteryPercent || 0} />
                         <div className="text-sm font-medium">
                             <p className="leading-none">{((voltage || 0) / 1000).toFixed(1).replace('.', ',')} V</p>
-                            <p className="text-[10px] text-gray-400 leading-none mt-0.5">{trap.batteryPercent || 0}%</p>
+                            <p className="text-[10px] text-gray-400 leading-none mt-0.5">{catchSensor.batteryPercent || 0}%</p>
                         </div>
                     </div>
 
                     <div className="flex items-center space-x-2 text-gray-500">
                         <div className="flex items-center space-x-2">
-                            <SignalIndicator rssi={isLoRa ? trap.lorawanTrapSensor?.loraRssi : trap.rssi} barWidth="w-1" barHeight="h-4" className="mb-0.5" />
+                            <SignalIndicator rssi={isLoRa ? catchSensor.lorawanCatchSensor?.loraRssi : catchSensor.rssi} barWidth="w-1" barHeight="h-4" className="mb-0.5" />
                             <div className="text-sm font-medium text-gray-500 leading-none mt-0.5">
-                                {(isLoRa ? (trap.lorawanTrapSensor?.loraRssi || 0) : (trap.rssi || 0))} dBm
+                                {(isLoRa ? (catchSensor.lorawanCatchSensor?.loraRssi || 0) : (catchSensor.rssi || 0))} dBm
                             </div>
                         </div>
-                        {isLoRa && trap.lorawanTrapSensor && (
+                        {isLoRa && catchSensor.lorawanCatchSensor && (
                             <div className="flex items-center gap-1.5 ml-1">
-                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase leading-none">SNR {Number(trap.lorawanTrapSensor.snr).toFixed(1)}</span>
-                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase leading-none">SF {trap.lorawanTrapSensor.spreadingFactor}</span>
+                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase leading-none">SNR {Number(catchSensor.lorawanCatchSensor.snr).toFixed(1)}</span>
+                                <span className="text-[9px] font-extrabold text-[#1b3a2e]/60 bg-white/50 px-1.5 py-0.5 rounded border border-[#1b3a2e]/10 shadow-sm uppercase leading-none">SF {catchSensor.lorawanCatchSensor.spreadingFactor}</span>
                             </div>
                         )}
                     </div>
@@ -102,6 +100,4 @@ const TrapCard = ({ trap, onViewHistory, isShared }) => {
     );
 };
 
-
-
-export default TrapCard;
+export default CatchCard;
