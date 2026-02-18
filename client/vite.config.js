@@ -16,12 +16,12 @@ export default defineConfig({
     https: false, // Switch to HTTP for mobile compatibility
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000', // Changed to HTTP
+        target: 'http://localhost:5000', // Changed to HTTP
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://127.0.0.1:5000', // Changed to HTTP
+        target: 'http://localhost:5000', // Changed to HTTP
         ws: true,
         changeOrigin: true,
         secure: false,

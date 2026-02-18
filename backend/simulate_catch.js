@@ -1,7 +1,7 @@
 const mqtt = require('mqtt');
 const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('./src/config/database');
-const Trap = require('./src/models/Trap');
+const CatchSensor = require('./src/models/CatchSensor');
 require('dotenv').config();
 
 async function simulate() {
@@ -9,14 +9,14 @@ async function simulate() {
         await sequelize.authenticate();
         console.log('DB Connected.');
 
-        // 1. Find a trap
-        const trap = await Trap.findOne({ where: { imei: '78978746854546' } });
-        if (!trap) {
-            console.error('❌ No Catchs found in DB!');
+        // 1. Find a catch sensor
+        const catchSensor = await CatchSensor.findOne();
+        if (!catchSensor) {
+            console.error('❌ No CatchSensors found in DB! Run seed.js first.');
             process.exit(1);
         }
 
-        console.log(`🎯 Targeting Trap: ${trap.name} (IMEI: ${trap.imei})`);
+        console.log(`🎯 Targeting CatchSensor: ${catchSensor.name} (IMEI: ${catchSensor.imei})`);
 
         // 2. Connect to MQTT
         const client = mqtt.connect('mqtt://127.0.0.1');
@@ -24,7 +24,7 @@ async function simulate() {
         client.on('connect', () => {
             console.log('✅ MQTT Connected.');
 
-            const topic = `Catchs/${trap.imei}/data`;
+            const topic = `catches/${catchSensor.imei}/data`;
 
             // A) First set to Active (to ensure state change)
             const payloadActive = Buffer.from([0x01, 0x10, 0x68, 0x50]); // Active

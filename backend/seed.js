@@ -1,31 +1,35 @@
 const sequelize = require('./src/config/database');
-const Trap = require('./src/models/Trap');
+const CatchSensor = require('./src/models/CatchSensor');
 const Reading = require('./src/models/Reading');
 
 async function seed() {
     try {
+        await sequelize.authenticate();
+        console.log('Connection has been established successfully.');
+        await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { raw: true });
         await sequelize.sync({ force: true });
+        await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true });
         console.log('Database cleared.');
 
-        const Catchs = await Trap.bulkCreate([
+        const CatchSensors = await CatchSensor.bulkCreate([
             {
                 name: 'Hühnermobil',
                 location: 'Wildacker',
                 status: 'active',
                 batteryVoltage: 3850,
                 batteryPercent: 75,
-                signalStrength: 95,
+                rssi: 95,
                 imei: '862000000000004',
-                lastReading: new Date()
+                lastSeen: new Date()
             }
         ]);
 
-        console.log(`Seeded ${Catchs.length} real Catchs.`);
+        console.log(`Seeded ${CatchSensors.length} real CatchSensors.`);
 
-        for (const trap of Catchs) {
+        for (const catchSensor of CatchSensors) {
             await Reading.create({
-                CatchId: trap.id,
-                value: trap.batteryVoltage,
+                catchSensorId: catchSensor.id,
+                value: catchSensor.batteryVoltage,
                 type: 'status',
                 timestamp: new Date()
             });

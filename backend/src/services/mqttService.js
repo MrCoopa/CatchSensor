@@ -204,7 +204,7 @@ const updateCatchSensorData = async (deviceId, data, io) => {
             include: data.type === 'LORAWAN' ? [{ model: LoraMetadata, as: 'lorawanCatchSensor' }] : []
         });
 
-        console.log(`MQTT: Search result for ${deviceId}: ${trap ? 'Found' : 'NOT FOUND'}`);
+        console.log(`MQTT: Search result for ${deviceId}: ${catchSensor ? 'Found' : 'NOT FOUND'}`);
 
         if (!catchSensor) {
             console.log(`MQTT: 🆕 Auto-provisioning new device: ${deviceId}`);
@@ -218,7 +218,7 @@ const updateCatchSensorData = async (deviceId, data, io) => {
                     status: data.status,
                     userId: null // Unbound
                 });
-                console.log(`MQTT: ✅ Created new trap: ${trap.id}`);
+                console.log(`MQTT: ✅ Created new catch sensor: ${catchSensor.id}`);
             } catch (createErr) {
                 console.error('MQTT: Failed to auto-provision trap:', createErr);
                 return;

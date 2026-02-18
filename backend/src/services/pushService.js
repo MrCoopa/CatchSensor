@@ -1,5 +1,5 @@
 const webpush = require('web-push');
-const Trap = require('../models/Trap');
+const CatchSensor = require('../models/CatchSensor');
 
 // Normally generated and stored in .env
 // const vapidKeys = webpush.generateVAPIDKeys(); 
@@ -14,14 +14,14 @@ if (PUBLIC_VAPID_KEY && PRIVATE_VAPID_KEY) {
     );
 }
 
-const sendPushNotification = async (trap, type, subscription) => {
+const sendPushNotification = async (catchSensor, type, subscription) => {
     // 24h Throttling Logic for Battery Warnings
     if (type === 'LOW_BATTERY') {
-        const lastAlert = trap.lastBatteryAlert;
+        const lastAlert = catchSensor.lastBatteryAlert;
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
         if (lastAlert && lastAlert > oneDayAgo) {
-            console.log(`Push: Throttling battery alert for ${trap.name}`);
+            console.log(`Push: Throttling battery alert for ${catchSensor.name}`);
             return;
         }
     }
@@ -29,10 +29,10 @@ const sendPushNotification = async (trap, type, subscription) => {
     const payload = JSON.stringify({
         title: type === 'ALARM' ? '🚨 FANG-ALARM!' : '⚠️ System-Info',
         body: type === 'ALARM'
-            ? `Falle "${trap.name}" hat ausgelöst!`
-            : `Batterie bei "${trap.name}" niedrig.`,
+            ? `Fallenmelder "${catchSensor.name}" hat ausgelöst!`
+            : `Batterie bei "${catchSensor.name}" niedrig.`,
         data: {
-            url: `/trap/${trap.id}`,
+            url: `/catch/${catchSensor.id}`,
             t: Date.now()
         }
     });
@@ -45,7 +45,7 @@ const sendPushNotification = async (trap, type, subscription) => {
         console.log(`Push Service: Success! Status Code: ${result.statusCode}`);
 
         if (type === 'LOW_BATTERY') {
-            await trap.update({ lastBatteryAlert: new Date() });
+            await catchSensor.update({ lastBatteryAlert: new Date() });
         }
     } catch (err) {
         console.error('Push Service: ❌ Error during webpush.sendNotification:', err);

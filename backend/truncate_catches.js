@@ -1,5 +1,5 @@
 const sequelize = require('./src/config/database');
-const Trap = require('./src/models/Trap');
+const CatchSensor = require('./src/models/CatchSensor');
 const Reading = require('./src/models/Reading');
 const LoraMetadata = require('./src/models/LoraMetadata'); // Ensure model is loaded for hooks
 
@@ -12,9 +12,9 @@ const LoraMetadata = require('./src/models/LoraMetadata'); // Ensure model is lo
         await Reading.destroy({ where: {}, truncate: false });
         console.log('✅ Readings cleared.');
 
-        console.log('🗑️  Deleting all CatchS (Cascades to Metadata & Shares)...');
-        await Trap.destroy({ where: {}, truncate: false });
-        console.log('✅ Catchs cleared.');
+        console.log('🗑️  Deleting all CatchSensors (Cascades to Metadata & Shares)...');
+        await CatchSensor.destroy({ where: {}, truncate: false });
+        console.log('✅ CatchSensors cleared.');
 
         // Verify LoraMetadata is empty
         const metadataCount = await LoraMetadata.count();
@@ -33,4 +33,3 @@ const LoraMetadata = require('./src/models/LoraMetadata'); // Ensure model is lo
         process.exit(1);
     }
 })();
-

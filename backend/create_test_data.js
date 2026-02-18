@@ -1,12 +1,12 @@
-const Trap = require('./src/models/Trap');
+const CatchSensor = require('./src/models/CatchSensor');
 const Reading = require('./src/models/Reading');
 const sequelize = require('./src/config/database');
 const { Op } = require('sequelize');
 
 async function createTestData() {
     try {
-        // Find the trap
-        const trap = await Trap.findOne({
+        // Find the catch sensor
+        const catchSensor = await CatchSensor.findOne({
             where: {
                 [Op.or]: [
                     { name: 'Hühnermobil' },
@@ -17,12 +17,12 @@ async function createTestData() {
             }
         });
 
-        if (!trap) {
-            console.error('Trap "Hühnermobil/Hühnerhaus" nicht gefunden.');
+        if (!catchSensor) {
+            console.error('CatchSensor "Hühnermobil/Hühnerhaus" nicht gefunden.');
             process.exit(1);
         }
 
-        console.log(`Erstelle Testdaten für: ${trap.name} (${trap.id})`);
+        console.log(`Erstelle Testdaten für: ${catchSensor.name} (${catchSensor.id})`);
 
         // Clear existing readings for a clean test set if desired? 
         // No, let's just add to it.
@@ -36,7 +36,7 @@ async function createTestData() {
             const batteryDecay = Math.max(0, 100 - (24 - i) * 0.5); // Slow decay
 
             testReadings.push({
-                CatchId: trap.id,
+                catchSensorId: catchSensor.id,
                 value: 3800 - (24 - i) * 10, // Voltage in mV
                 type: 'status',
                 status: 'active',
@@ -53,7 +53,7 @@ async function createTestData() {
 
         // 2. An alarm event 2 hours ago
         testReadings.push({
-            CatchId: trap.id,
+            catchSensorId: catchSensor.id,
             value: 3650,
             type: 'alarm',
             status: 'triggered',
@@ -69,7 +69,7 @@ async function createTestData() {
 
         // 3. A final status update (resurrection) 1 hour ago
         testReadings.push({
-            CatchId: trap.id,
+            catchSensorId: catchSensor.id,
             value: 3640,
             type: 'status',
             status: 'active',
@@ -85,8 +85,8 @@ async function createTestData() {
 
         await Reading.bulkCreate(testReadings);
 
-        // Update the trap's main fields to reflect the last reading
-        await trap.update({
+        // Update the sensor's main fields to reflect the last reading
+        await catchSensor.update({
             status: 'active',
             batteryVoltage: 3640,
             batteryPercent: 44,
