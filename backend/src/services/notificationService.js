@@ -9,17 +9,35 @@ const PushSubscription = require('../models/PushSubscription');
  */
 const sendUnifiedNotification = async (user, catchSensor, type, customMessage = null) => {
     try {
-        // ... Throttling logic remains ...
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        // Throttling logic based on user settings
+        const batteryInterval = user.batteryAlertInterval || 24;
+        const offlineInterval = user.offlineAlertInterval || 24;
+        const catchInterval = user.catchAlertInterval || 1;
+
         if (type === 'LOW_BATTERY') {
-            if (catchSensor.lastBatteryAlert && catchSensor.lastBatteryAlert > oneDayAgo) {
-                console.log(`NotificationEngine: Throttling battery alert for ${catchSensor.alias || catchSensor.imei}`);
+            const lastAlert = catchSensor.lastBatteryAlert;
+            const thresholdTime = new Date(Date.now() - batteryInterval * 60 * 60 * 1000);
+            if (lastAlert && lastAlert > thresholdTime) {
+                console.log(`NotificationEngine: Throttling battery alert for ${catchSensor.alias || catchSensor.imei} (Interval: ${batteryInterval}h)`);
                 return;
             }
         }
+
         if (type === 'CONNECTION_LOST') {
-            if (catchSensor.lastOfflineAlert && catchSensor.lastOfflineAlert > oneDayAgo) {
-                console.log(`NotificationEngine: Throttling offline alert for ${catchSensor.alias || catchSensor.imei}`);
+            const lastAlert = catchSensor.lastOfflineAlert;
+            const thresholdTime = new Date(Date.now() - offlineInterval * 60 * 60 * 1000);
+            if (lastAlert && lastAlert > thresholdTime) {
+                console.log(`NotificationEngine: Throttling offline alert for ${catchSensor.alias || catchSensor.imei} (Interval: ${offlineInterval}h)`);
+                return;
+            }
+        }
+
+        if (type === 'ALARM') {
+            const lastAlert = catchSensor.lastCatchAlert;
+            const thresholdTime = new Date(Date.now() - catchInterval * 60 * 60 * 1000);
+            // Only throttle if the sensor is ALREADY triggered (repeat alert logic)
+            if (catchSensor.status === 'triggered' && lastAlert && lastAlert > thresholdTime) {
+                console.log(`NotificationEngine: Throttling repetitive alarm for ${catchSensor.alias || catchSensor.imei} (Interval: ${catchInterval}h)`);
                 return;
             }
         }
@@ -96,6 +114,8 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
             await catchSensor.update({ lastBatteryAlert: new Date() });
         } else if (type === 'CONNECTION_LOST') {
             await catchSensor.update({ lastOfflineAlert: new Date() });
+        } else if (type === 'ALARM') {
+            await catchSensor.update({ lastCatchAlert: new Date() });
         }
     } catch (err) {
         console.error('NotificationEngine: Error in sendUnifiedNotification:', err);

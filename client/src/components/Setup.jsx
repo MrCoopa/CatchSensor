@@ -26,6 +26,9 @@ const Setup = ({ onLogout }) => {
     const [pushoverAppKey, setPushoverAppKey] = useState('');
     const [pushoverUserKey, setPushoverUserKey] = useState('');
     const [batteryThreshold, setBatteryThreshold] = useState(20);
+    const [batteryAlertInterval, setBatteryAlertInterval] = useState(24);
+    const [offlineAlertInterval, setOfflineAlertInterval] = useState(24);
+    const [catchAlertInterval, setCatchAlertInterval] = useState(1);
     const [showPushover, setShowPushover] = useState(false);
 
     const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -253,6 +256,9 @@ const Setup = ({ onLogout }) => {
                 setPushoverAppKey(userData.pushoverAppKey || '');
                 setPushoverUserKey(userData.pushoverUserKey || '');
                 setBatteryThreshold(userData.batteryThreshold || 20);
+                setBatteryAlertInterval(userData.batteryAlertInterval || 24);
+                setOfflineAlertInterval(userData.offlineAlertInterval || 24);
+                setCatchAlertInterval(userData.catchAlertInterval || 1);
                 if (userData.pushEnabled !== undefined) setPushEnabled(userData.pushEnabled);
             }
 
@@ -280,7 +286,15 @@ const Setup = ({ onLogout }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ pushoverAppKey, pushoverUserKey, batteryThreshold, pushEnabled })
+                body: JSON.stringify({
+                    pushoverAppKey,
+                    pushoverUserKey,
+                    batteryThreshold,
+                    pushEnabled,
+                    batteryAlertInterval,
+                    offlineAlertInterval,
+                    catchAlertInterval
+                })
 
             });
 
@@ -734,6 +748,62 @@ const Setup = ({ onLogout }) => {
                                 onTouchEnd={handleUpdateProfile}
                                 className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#1b3a2e]"
                             />
+                        </div>
+
+                        {/* Interval Settings */}
+                        <div className="p-4 space-y-4 bg-gray-50/30">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Benachrichtigungs-Intervalle (Stunden)</p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-gray-500 uppercase">Batterie</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="168"
+                                            value={batteryAlertInterval}
+                                            onChange={(e) => setBatteryAlertInterval(parseInt(e.target.value))}
+                                            onBlur={handleUpdateProfile}
+                                            className="w-full bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#1b3a2e] transition-colors"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">h</span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-gray-500 uppercase">Offline</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="168"
+                                            value={offlineAlertInterval}
+                                            onChange={(e) => setOfflineAlertInterval(parseInt(e.target.value))}
+                                            onBlur={handleUpdateProfile}
+                                            className="w-full bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#1b3a2e] transition-colors"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">h</span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-gray-500 uppercase">Dauer-Alarm</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="24"
+                                            value={catchAlertInterval}
+                                            onChange={(e) => setCatchAlertInterval(parseInt(e.target.value))}
+                                            onBlur={handleUpdateProfile}
+                                            className="w-full bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#1b3a2e] transition-colors"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">h</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-[9px] text-gray-400 italic font-medium">Intervalle legen fest, wie oft bei demselben Ereignis erneut benachrichtigt wird.</p>
                         </div>
 
                         {/* Pushover Config Row */}

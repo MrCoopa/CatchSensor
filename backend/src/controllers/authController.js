@@ -91,7 +91,15 @@ const getMe = async (req, res) => {
 
 const updateProfile = async (req, res) => {
     try {
-        const { pushoverAppKey, pushoverUserKey, pushEnabled, batteryThreshold } = req.body;
+        const {
+            pushoverAppKey,
+            pushoverUserKey,
+            pushEnabled,
+            batteryThreshold,
+            batteryAlertInterval,
+            offlineAlertInterval,
+            catchAlertInterval
+        } = req.body;
         const user = await User.findByPk(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -99,6 +107,9 @@ const updateProfile = async (req, res) => {
         if (pushoverUserKey !== undefined) user.pushoverUserKey = pushoverUserKey;
         if (pushEnabled !== undefined) user.pushEnabled = pushEnabled;
         if (batteryThreshold !== undefined) user.batteryThreshold = batteryThreshold;
+        if (batteryAlertInterval !== undefined) user.batteryAlertInterval = batteryAlertInterval;
+        if (offlineAlertInterval !== undefined) user.offlineAlertInterval = offlineAlertInterval;
+        if (catchAlertInterval !== undefined) user.catchAlertInterval = catchAlertInterval;
 
         await user.save();
         res.json({
@@ -110,7 +121,10 @@ const updateProfile = async (req, res) => {
                 pushoverAppKey: user.pushoverAppKey,
                 pushoverUserKey: user.pushoverUserKey,
                 pushEnabled: user.pushEnabled,
-                batteryThreshold: user.batteryThreshold
+                batteryThreshold: user.batteryThreshold,
+                batteryAlertInterval: user.batteryAlertInterval,
+                offlineAlertInterval: user.offlineAlertInterval,
+                catchAlertInterval: user.catchAlertInterval
             }
         });
     } catch (error) {

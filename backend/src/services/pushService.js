@@ -15,16 +15,8 @@ if (PUBLIC_VAPID_KEY && PRIVATE_VAPID_KEY) {
 }
 
 const sendPushNotification = async (catchSensor, type, subscription) => {
-    // 24h Throttling Logic for Battery Warnings
-    if (type === 'LOW_BATTERY') {
-        const lastAlert = catchSensor.lastBatteryAlert;
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-        if (lastAlert && lastAlert > oneDayAgo) {
-            console.log(`Push: Throttling battery alert for ${catchSensor.name}`);
-            return;
-        }
-    }
+    // Throttling is now handled centrally in notificationService.js
+    // to allow user-specific configurable intervals.
 
     let title = `⚠️ System-Info: Batterie von ${catchSensor.name} niedrig (${catchSensor.batteryPercent || '0'}%)`;
     let body = `Batterie bei "${catchSensor.name}" niedrig. (${(catchSensor.batteryVoltage / 1000).toFixed(2)}V) (${catchSensor.batteryPercent || '0'}%)`;

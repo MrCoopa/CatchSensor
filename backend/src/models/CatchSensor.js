@@ -66,6 +66,10 @@ const CatchSensor = sequelize.define('CatchSensor', {
         type: DataTypes.DATE,
         allowNull: true,
     },
+    lastCatchAlert: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
     userId: {
         type: DataTypes.UUID,
         allowNull: true,
