@@ -754,9 +754,9 @@ const Setup = ({ onLogout }) => {
                         <div className="p-4 space-y-4 bg-gray-50/30">
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Benachrichtigungs-Intervalle (Stunden)</p>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-4">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold text-gray-500 uppercase">Batterie</label>
+                                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Batteriewarnung</label>
                                     <div className="relative">
                                         <input
                                             type="number"
@@ -767,12 +767,12 @@ const Setup = ({ onLogout }) => {
                                             onBlur={handleUpdateProfile}
                                             className="w-full bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#1b3a2e] transition-colors"
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">h</span>
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-medium">Stunden</span>
                                     </div>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold text-gray-500 uppercase">Offline</label>
+                                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Offlinewarnung</label>
                                     <div className="relative">
                                         <input
                                             type="number"
@@ -783,12 +783,12 @@ const Setup = ({ onLogout }) => {
                                             onBlur={handleUpdateProfile}
                                             className="w-full bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#1b3a2e] transition-colors"
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">h</span>
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-medium">Stunden</span>
                                     </div>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold text-gray-500 uppercase">Dauer-Alarm</label>
+                                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Fangmeldung</label>
                                     <div className="relative">
                                         <input
                                             type="number"
@@ -799,7 +799,7 @@ const Setup = ({ onLogout }) => {
                                             onBlur={handleUpdateProfile}
                                             className="w-full bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#1b3a2e] transition-colors"
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">h</span>
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-medium">Stunden</span>
                                     </div>
                                 </div>
                             </div>
