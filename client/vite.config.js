@@ -48,6 +48,7 @@ export default defineConfig({
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
+        gcm_sender_id: '103953800507',
         icons: [
           {
             src: '/icons/fox-logo.png',
@@ -68,6 +69,13 @@ export default defineConfig({
             purpose: 'maskable'
           }
         ],
+        shortcuts: [
+          {
+            name: 'Status prüfen',
+            url: '/',
+            icons: [{ src: '/icons/fox-logo.png', sizes: '192x192' }]
+          }
+        ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],

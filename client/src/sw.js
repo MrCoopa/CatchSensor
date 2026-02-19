@@ -57,11 +57,18 @@ self.addEventListener('push', (event) => {
 
     const title = data.title || 'CatchSensor!';
     const options = {
-        body: data.body || 'Update verfügbar.',
+        body: data.body || 'Neue Information verfügbar.',
+        icon: '/icons/fox-logo.png',
+        badge: '/icons/fox-logo.png', // Small monochrome icon for status bar
+        vibrate: [100, 50, 100],
         tag: 'catchsensor-notification',
         renotify: true,
         requireInteraction: true,
-        data: data.data || { url: '/' }
+        data: data.data || { url: '/' },
+        actions: [
+            { action: 'open', title: 'Öffnen' },
+            { action: 'close', title: 'Schließen' }
+        ]
     };
 
     event.waitUntil(
@@ -73,7 +80,11 @@ self.addEventListener('push', (event) => {
 
 
 self.addEventListener('notificationclick', (event) => {
+    broadcastLog('SW: Notification-Click empfangen, Action: ' + event.action);
     event.notification.close();
+
+    if (event.action === 'close') return;
+
     const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
 
     event.waitUntil(
