@@ -21,8 +21,10 @@ Bevor du startest, stelle sicher, dass folgende Software installiert ist:
 2. Erstelle ein neues Projekt (z.B. "CatchSensor").
 3. Füge eine **Android-App** hinzu (Paketname: `com.catchsensor.app`).
 4. Lade die `google-services.json` herunter und verschiebe sie nach `client/android/app/`.
-5. Gehe zu **Projekteinstellungen -> Servicekonten** und klicke auf **"Neuen privaten Schlüssel generieren"**.
-6. Speichere diese Datei als `serviceAccountKey.json` im Verzeichnis `backend/`.
+5. Gehe zu **Projekteinstellungen → Servicekonten** und klicke auf **"Neuen privaten Schlüssel generieren"**.
+6. Speichere die Datei als `serviceAccountKey.json` im Verzeichnis `backend/`.
+
+> **Für Docker/Portainer:** Die Datei wird als Base64-Umgebungsvariable übergeben (siehe Abschnitt 6).
 
 ### The Things Network (für LoRaWAN)
 1. Erstelle eine Applikation in der [TTN Console](https://eu1.cloud.thethings.network/).
@@ -37,11 +39,21 @@ Es gibt nur **eine einzige Stelle** für alle Einstellungen: die `.env` Datei im
 
 ```env
 PORT=5000
-DB_HOST=localhost # Oder catchsensor_db bei Docker
+DB_HOST=localhost         # Oder catchsensor_db bei Docker
+JWT_SECRET=dein_geheimer_schluessel
 VITE_API_URL=https://catchsensor.home
 APP_BASE_URL=https://catchsensor.home
 
-# MQTT & Push Keys hier einfügen...
+# TTN LoRaWAN (optional)
+TTN_MQTT_BROKER=eu1.cloud.thethings.network
+TTN_MQTT_USER=...
+TTN_MQTT_PASS=...
+TTN_MQTT_TOPIC=...
+
+# Firebase (für Docker - Base64 des serviceAccountKey.json)
+# Generieren mit PowerShell:
+# [Convert]::ToBase64String([IO.File]::ReadAllBytes("backend\serviceAccountKey.json"))
+FIREBASE_SERVICE_ACCOUNT_B64=...
 ```
 
 ---
@@ -91,8 +103,26 @@ Um HTTPS und die Domain `https://catchsensor.home` zu nutzen:
 Bei der Nutzung von Portainer (Git-Stack):
 1. **Keine `.env` Datei im Repo**: Portainer benötigt die Variablen im UI.
 2. Gehe in deinem Stack auf **"Environment variables"**.
-3. Füge alle Variablen aus der `.env` (z.B. `JWT_SECRET`, `VITE_API_URL`) dort manuell hinzu.
+3. Füge alle Variablen aus der `.env` dort manuell hinzu.
 4. Portainer injiziert diese dann automatisch in den Container.
+
+### Firebase Key für Portainer (Base64)
+Da `serviceAccountKey.json` nicht ins Git-Repo eingecheckt wird, wird sie als Base64-Umgebungsvariable übergeben:
+
+**Schritt 1** — Base64-String in PowerShell generieren (auf dem Entwicklungs-PC):
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("backend\serviceAccountKey.json")) | Set-Clipboard
+```
+
+**Schritt 2** — In Portainer als Umgebungsvariable hinzufügen:
+- Name: `FIREBASE_SERVICE_ACCOUNT_B64`
+- Wert: *(aus Zwischenablage einfügen)*
+
+**Schritt 3** — Stack updaten. In den Container-Logs sollte erscheinen:
+```
+Push Service: Firebase credentials loaded from env var. ✅
+Push Service: Firebase Admin SDK initialized successfully. ✅
+```
 
 ---
 
@@ -103,8 +133,10 @@ Bei der Nutzung von Portainer (Git-Stack):
 - Prüfe, ob das SSL-Zertifikat vom Handy akzeptiert wird.
 
 ### Keine Push-Benachrichtigungen
-- Prüfe, ob die `serviceAccountKey.json` im Backend-Ordner liegt.
-- Prüfe in der App unter **Setup -> Debug**, ob das Token registriert wurde.
+- Prüfe in den Container-Logs ob `Firebase Admin SDK initialized` erscheint.
+- Falls nicht: `FIREBASE_SERVICE_ACCOUNT_B64` fehlt oder ist ungültig (siehe Abschnitt 6).
+- Lokal: Prüfe ob `backend/serviceAccountKey.json` vorhanden ist.
+- Prüfe in der App unter **Setup → Debug**, ob das FCM-Token registriert wurde.
 
 ---
 *Viel Erfolg bei der Fangjagd! Bei Fragen hilft die [README.md](README.md) weiter.*
