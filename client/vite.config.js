@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 // ...
 
 export default defineConfig({
+  envDir: '../',
   server: {
     host: true,
     https: false, // Switch to HTTP for mobile compatibility

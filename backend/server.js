@@ -1,6 +1,6 @@
 const path = require('path');
 const dotenv = require('dotenv');
-dotenv.config({ path: path.resolve(__dirname, '.env') }); // Explicitly load backend/.env
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') }); // Load centralized .env from root
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
