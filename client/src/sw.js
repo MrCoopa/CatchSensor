@@ -2,6 +2,14 @@ import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 
 cleanupOutdatedCaches()
 
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(clients.claim());
+});
+
 // Broadcasting for remote debugging
 const broadcastLog = (msg, type = 'log') => {
     clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clients => {
