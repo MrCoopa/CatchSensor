@@ -408,7 +408,8 @@ async function startServer() {
             console.log('--- Server Status ---');
             console.log(`Server: Running on port ${PORT}`);
             console.log(`Mode: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`API URL: http://0.0.0.0:${PORT}`);
+            console.log(`VITE_API_URL: ${process.env.VITE_API_URL || 'Not Set'}`);
+            console.log(`APP_BASE_URL: ${process.env.APP_BASE_URL || 'Not Set'}`);
             console.log('-----------------------');
         });
     } catch (error) {
