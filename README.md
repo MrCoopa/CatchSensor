@@ -1,68 +1,90 @@
-# 🦊 CatchSensor
+# 🦊 CatchSensor: Professionelles Fallen-Monitoring
 
-**CatchSensor** ist eine moderne IoT-Lösung zur Echtzeit-Überwachung von Fallenmeldern. Das System unterstützt sowohl **NB-IoT** (über eigenen Broker) als auch **LoRaWAN** (via The Things Network), bietet detaillierte Status-Visualisierungen und intelligente Benachrichtigungen.
-
----
-
-## ✨ Features
-
-- **📊 Dual-Path Dashboard**: Nahtlose Integration von NB-IoT und LoRaWAN Meldern in einer gemeinsamen Übersicht.
-- **📡 Advanced Telemetry**: Anzeige von LoRa-Metadaten wie SNR, Spreading Factor (SF), Gateway-Anzahl und Frame Count.
-- **🔋 Intelligentes Energiemanagement**:
-  - Grafische Anzeige von Spannung (V) und Ladestand (%) mit Farbwechsel.
-  - **Benutzerdefinierte Warnschwelle**: Einstellbarer Prozentwert für Battery-Alerts via Setup-Page.
-- **🔔 Multi-Channel Notifications**:
-  - **PWA Push**: Web-Push Benachrichtigungen direkt auf das Smartphone.
-  - **Pushover Integration**: Dedizierte Schnittstelle für professionelle Alarmierung (App-Token & User-Key).
-- **🕒 Lückenlose Historie**: Scrollbarer Ereignis-Stream mit allen technischen Daten pro Übertragung.
-- **🆕 Auto-Provisioning**: Neue Geräte werden beim ersten Funkkontakt automatisch erfasst und können vom Benutzer einfach geclaimed (zugewiesen) werden.
-- **🐕 Watchdog Service**: Hintergrund-Überwachung, die Melder bei Funkstille (> 8h) automatisch als OFFLINE markiert und warnt.
+**CatchSensor** ist eine hochmoderne IoT-Plattform zur Echtzeit-Überwachung von Fallenmeldern. Entwickelt für Jäger und Naturschützer, kombiniert CatchSensor maximale Zuverlässigkeit mit intuitiver Bedienung durch eine Hybrid-Architektur (PWA & Native Android).
 
 ---
 
-## 🛠 Technologie-Stack
+## 🚀 Kern-Features
 
-### Frontend
-- **React.js** (Vite) & Tailwind CSS
-- **Lucide Icons** & Mobile-First Responsive Design
-- **Socket.io** für Echtzeit-Statusupdates (Kein Refresh nötig)
+### 📊 Multi-Protokoll Dashboard
+CatchSensor ist hersteller- und protokollunabhängig. Es vereint verschiedene Welten in einer Übersicht:
+- **NB-IoT Integration**: Direkte Anbindung über einen integrierten MQTT-Broker.
+- **LoRaWAN (TTN) Support**: Nahtlose Integration von The Things Network Geräten.
+- **Echtzeit-Updates**: Dank **Socket.io** aktualisieren sich alle Statuswerte sofort ohne Seiten-Refresh.
 
-### Backend
-- **Node.js & Express**
-- **MariaDB / PostgreSQL** (via Sequelize ORM)
-- **Multi-Broker MQTT**: Getrennte Anbindung für NB-IoT (Aedes/External) und LoRaWAN (TTN).
-- **Web-Push & Pushover** für zuverlässige Alarmierung.
+### 🔔 Intelligente Alarmierung (Triple-Alert)
+Verpassen Sie nie wieder einen Fang durch drei redundante Kanäle:
+1. **Native Push (Android)**: Google Firebase Integration für zuverlässige System-Benachrichtigungen auf dem Smartphone.
+2. **PWA Push (Web)**: Moderne Web-Push-Notification für Browser-Installationen.
+3. **Pushover-Dienst**: Optionale Anbindung für professionelle Alarm-Ketten (API-Token & User-Key).
 
----
+### 🔋 Energiemanagement & Watchdog
+- **Präzise Überwachung**: Anzeige von Batteriespannung (V) und Ladestand (%) mit dynamischen Farbindikatoren.
+- **Warnschwellen**: Individuell einstellbare Alarmschwellen für niedrigen Batteriestand.
+- **Watchdog-Dienst**: Automatische Erkennung von Funkstille (> 8h). Das System markiert Geräte als *AUSFALL* und benachrichtigt den Nutzer.
 
-## 🚀 Installation & Setup
-
-### 1. Repository klonen
-```bash
-git clone https://github.com/MrCoopa/CatchSensor.git
-cd CatchSensor
-```
-
-### 2. Backend einrichten
-```bash
-cd backend
-npm install
-# .env Datei erstellen (siehe interfaces.md für Details)
-npm start
-```
-
-### 3. Frontend einrichten
-```bash
-cd client
-npm install
-npm run dev
-```
+### 📱 Hybrid-App & QR-Technologie
+- **Native Android App**: Gebaut mit **Capacitor** für bessere Performance und native Push-Dienste.
+- **QR-System**: Schnelles Hinzufügen von Meldern durch Scannen und einfaches Teilen von Geräten mit Jagdkameraden via QR-Code.
 
 ---
 
-## 📄 Dokumentation
-Weitere technische Details finden Sie in der [interfaces.md](file:///d:/CatchSensor/CatchSensor/interfaces.md).
+## 🛠 Technischer Stack
+
+| Komponente | Technologie |
+| :--- | :--- |
+| **Frontend** | React (Vite), Tailwind CSS, Lucide Icons |
+| **Mobile** | Capacitor (Android), native Push-Plugins |
+| **Backend** | Node.js (Express), Socket.io, JWT Authentication |
+| **Datenbank** | MariaDB / SQLite (via Sequelize ORM) |
+| **IoT-Core** | Embedded Aedes MQTT Broker & TTN-Webhook-Integration |
+| **Deployment** | Docker & Docker Compose |
 
 ---
-*Entwickelt mit ❤️ für eine effiziente und zuverlässige Fallenjagd.*
 
+## 📦 Deployment (Empfohlen via Docker)
+
+Die Plattform ist vollständig dockerisiert und kann mit einem Befehl gestartet werden.
+
+1. **Vorbereitung**:
+   Stellen Sie sicher, dass `backend/serviceAccountKey.json` (FCM) vorhanden ist und die `.env` Datei konfiguriert wurde.
+
+2. **Starten**:
+   ```bash
+   docker compose up --build -d
+   ```
+
+3. **URL & Netzwerk**:
+   Die App ist vorkonfiguriert für den Einsatz hinter einem Nginx Proxy Manager mit der Domain `https://catchsensor.home`.
+
+---
+
+## ⚙️ Konfiguration (.env)
+
+| Variable | Beschreibung |
+| :--- | :--- |
+| `VITE_API_URL` | Die URL unter der das Backend für die App erreichbar ist (z.B. `https://catchsensor.home`) |
+| `APP_BASE_URL` | Basis-URL für interne Links und System-Redirects |
+| `JWT_SECRET` | Geheimer Schlüssel für die Token-Authentifizierung |
+| `VAPID_KEYS` | Schlüsselpaar für Web-Push (PWA) |
+
+---
+
+## 📋 Bedienungsanleitung
+
+### Neues Gerät hinzufügen
+1. Melder einschalten und Funknachricht senden.
+2. Die App erkennt unbekannte Melder automatisch im Dashboard.
+3. Auf **"Melder zuweisen"** klicken, Name vergeben und fertig.
+
+### Melder teilen
+In den Details eines Melders kann ein QR-Code generiert werden. Ein anderer Nutzer kann diesen scannen, um ebenfalls Zugriff auf die Statusmeldungen zu erhalten.
+
+### Entwickler & Debugging
+In den Setup-Einstellungen gibt es ein (mit Klick auf den Pfeil) erweiterbares Debug-Menü. Hier können:
+- Push-Benachrichtigungen manuell getestet werden.
+- Registrierte Service-Worker eingesehen werden.
+- MQTT-Verbindungsstatus geprüft werden.
+
+---
+*Entwickelt mit Präzision für höchste Zuverlässigkeit bei der Jagd.*

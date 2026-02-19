@@ -24,6 +24,8 @@ services:
     depends_on:
       catchsensor_db:
         condition: service_healthy
+    volumes:
+      - ./backend/serviceAccountKey.json:/app/backend/serviceAccountKey.json:ro
     restart: always
 
   catchsensor_db:

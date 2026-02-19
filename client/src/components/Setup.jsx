@@ -89,7 +89,7 @@ const Setup = ({ onLogout }) => {
                 return;
             }
 
-            if ('Notification' in window) {
+            if (!Capacitor.isNativePlatform() && 'Notification' in window) {
                 setNotifPermission(Notification.permission);
             }
             if (navigator.serviceWorker) {
@@ -218,7 +218,7 @@ const Setup = ({ onLogout }) => {
             setStatusMessage({ text: 'Service Worker nicht aktiv oder Seite nicht "controlled".', type: 'error' });
             return;
         }
-        if (Notification.permission !== 'granted') {
+        if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission !== 'granted') {
             setStatusMessage({ text: `Hinweis: Berechtigung ist "${Notification.permission}". Bitte erlauben.`, type: 'error' });
         }
         setStatusMessage({ text: 'Sende lokalen Test-Befehl...', type: '' });
@@ -231,7 +231,7 @@ const Setup = ({ onLogout }) => {
             setStatusMessage({ text: 'Service Worker nicht unterstützt.', type: 'error' });
             return;
         }
-        if (Notification.permission !== 'granted') {
+        if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission !== 'granted') {
             setStatusMessage({ text: 'Keine Berechtigung! Bitte erst anfordern.', type: 'error' });
             return;
         }
@@ -275,7 +275,7 @@ const Setup = ({ onLogout }) => {
             return;
         }
 
-        if (!('Notification' in window)) {
+        if (Capacitor.isNativePlatform() || !('Notification' in window)) {
             setStatusMessage({ text: 'Browser unterstützt keine Benachrichtigungen.', type: 'error' });
             return;
         }
@@ -602,7 +602,7 @@ const Setup = ({ onLogout }) => {
         if (!navigator.serviceWorker) return;
         try {
             const registration = await navigator.serviceWorker.getRegistration();
-            if (registration) {
+            if (registration && registration.pushManager) {
                 const subscription = await registration.pushManager.getSubscription();
                 if (subscription) {
                     console.log('checkPushSubscription: Active sub found:', subscription.endpoint.substring(0, 30));
@@ -688,7 +688,7 @@ const Setup = ({ onLogout }) => {
 
         try {
             // Android 13+ explicit permission request
-            if ('Notification' in window && Notification.permission !== 'granted') {
+            if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission !== 'granted') {
                 setStatusMessage({ text: 'Frage Berechtigung an...', type: '' });
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
