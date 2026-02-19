@@ -46,6 +46,7 @@ export default defineConfig({
         background_color: '#1b3a2e',
         display: 'standalone',
         orientation: 'portrait',
+        prefer_related_applications: false,
         scope: '/',
         start_url: '/',
         gcm_sender_id: '103953800507',

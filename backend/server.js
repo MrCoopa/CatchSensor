@@ -110,6 +110,12 @@ app.use((req, res, next) => {
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/icons', express.static(path.join(__dirname, 'public/icons')));
 
+// Explicit MIME type for PWA manifest (crucial for Android)
+app.get('/manifest.webmanifest', (req, res) => {
+    res.setHeader('Content-Type', 'application/manifest+json');
+    res.sendFile(path.join(__dirname, '../client/dist/manifest.webmanifest'));
+});
+
 // If a frontend build exists in 'client/dist', serve it
 const clientBuildPath = path.join(__dirname, '../client/dist');
 if (fs.existsSync(clientBuildPath)) {
