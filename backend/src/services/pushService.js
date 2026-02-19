@@ -31,7 +31,10 @@ const sendPushNotification = async (catchSensor, subscription, title, body) => {
         console.log(`Push Service: Sending to endpoint: ${subscription.endpoint.substring(0, 40)}...`);
         console.log(`Push Service: Payload: ${payload}`);
 
-        const result = await webpush.sendNotification(subscription, payload);
+        const result = await webpush.sendNotification(subscription, payload, {
+            TTL: 60 * 60 * 24, // 24 hours
+            urgency: 'high'    // Critical for Android to wake up from Doze mode
+        });
         console.log(`Push Service: Success! Status Code: ${result.statusCode}`);
 
     } catch (err) {

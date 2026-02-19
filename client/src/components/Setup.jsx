@@ -551,6 +551,15 @@ const Setup = ({ onLogout }) => {
         setStatusMessage({ text: 'Verarbeite...', type: '' });
 
         try {
+            // Android 13+ explicit permission request
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    setStatusMessage({ text: 'Benachrichtigungen wurden abgelehnt. Bitte in den Systemeinstellungen aktivieren.', type: 'error' });
+                    return;
+                }
+            }
+
             console.log('TogglePush: Checking registration...');
             let registration = await navigator.serviceWorker.getRegistration();
             console.log('TogglePush: Registration found:', !!registration);
