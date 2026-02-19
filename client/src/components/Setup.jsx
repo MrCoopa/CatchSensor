@@ -991,7 +991,7 @@ const Setup = ({ onLogout }) => {
                                             <Info size={20} />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-gray-900">Native Push Status</p>
+                                            <p className="text-sm font-bold text-gray-900">Berechtigung</p>
                                             <p className={`text-[10px] font-bold uppercase tracking-tight ${notifPermission === 'granted' ? 'text-green-600' : 'text-red-500'}`}>
                                                 {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Status offen'}
                                             </p>
