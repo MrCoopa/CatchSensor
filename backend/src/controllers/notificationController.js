@@ -74,29 +74,40 @@ exports.testNotification = async (req, res) => {
 
         if (subscriptions.length === 0) {
             return res.status(200).json({
-                message: 'Keine aktiven Browser-Abos gefunden. Bitte Push-Benachrichtigungen erst aktivieren.',
+                message: 'Keine aktiven Push-Abos gefunden. Bitte Push-Benachrichtigungen erst aktivieren.',
                 count: 0
             });
         }
 
         let sentCount = 0;
         for (const sub of subscriptions) {
-            // Robust parsing for keys that might be double-stringified in DB
+            // Robust parsing for keys
             let currentKeys = sub.keys;
-            let parseAttempts = 0;
-            while (typeof currentKeys === 'string' && parseAttempts < 3) {
+            try {
+                if (typeof currentKeys === 'string') currentKeys = JSON.parse(currentKeys);
+                if (typeof currentKeys === 'string') currentKeys = JSON.parse(currentKeys); // Double parse for legacy
+            } catch (e) { }
+
+            // 1. Native Push (Capacitor/FCM) - No Keys
+            if (!currentKeys && sub.keys === null) {
                 try {
-                    currentKeys = JSON.parse(currentKeys);
-                } catch (e) {
-                    console.error(`Keys parse error for sub ${sub.id}:`, e.message);
-                    break;
+                    console.log(`Test Notification: Sending Native FCM to ${sub.endpoint.substring(0, 15)}...`);
+                    await sendNativeNotification(
+                        sub.endpoint,
+                        '🧪 Test-Push (Native)',
+                        'Diese Nachricht bestätigt, dass Native Push-Benachrichtigungen funktionieren. 🦊',
+                        { type: 'TEST', url: '/setup' }
+                    );
+                    sentCount++;
+                } catch (err) {
+                    console.error('Test Notification: Native Push failed:', err.message);
                 }
-                parseAttempts++;
+                continue;
             }
 
-            // Validate keys
+            // 2. Web Push (Standard) - Requires Keys
             if (!currentKeys || typeof currentKeys !== 'object' || !currentKeys.p256dh || !currentKeys.auth) {
-                console.warn(`Test Notification: ⚠️ Invalid keys for sub ${sub.id}. Cleaning up.`);
+                console.warn(`Test Notification: ⚠️ Invalid keys for web sub ${sub.id}. Cleaning up.`);
                 await sub.destroy();
                 continue;
             }
@@ -105,7 +116,7 @@ exports.testNotification = async (req, res) => {
                 await sendPushNotification(
                     { name: 'Test-Device', location: 'System', id: 'test' },
                     { endpoint: sub.endpoint, keys: currentKeys },
-                    'Test-Nachricht',
+                    '🧪 Test-Push (Web)',
                     'Diese Nachricht bestätigt, dass PWA Push-Benachrichtigungen funktionieren. 🦊'
                 );
                 sentCount++;

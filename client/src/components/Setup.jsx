@@ -599,6 +599,7 @@ const Setup = ({ onLogout }) => {
     };
 
     const checkPushSubscription = async () => {
+        if (Capacitor.isNativePlatform()) return; // Native status managed by userData
         if (!navigator.serviceWorker) return;
         try {
             const registration = await navigator.serviceWorker.getRegistration();
@@ -1341,8 +1342,8 @@ const Setup = ({ onLogout }) => {
                                             <Shield size={20} />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-gray-900">PWA Status</p>
-                                            <p className={`text-[10px] font-bold ${swStatus.includes('Aktiv') ? 'text-green-600' : 'text-red-500'}`}>{swStatus}</p>
+                                            <p className="text-sm font-bold text-gray-900">{Capacitor.isNativePlatform() ? 'App Status' : 'PWA Status'}</p>
+                                            <p className={`text-[10px] font-bold ${swStatus.includes('Aktiv') || Capacitor.isNativePlatform() ? 'text-green-600' : 'text-red-500'}`}>{swStatus}</p>
                                         </div>
                                     </div>
                                 </div>
