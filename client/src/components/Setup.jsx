@@ -77,6 +77,13 @@ const Setup = ({ onLogout }) => {
 
 
     useEffect(() => {
+        // Check current permission status on every mount
+        if (Capacitor.isNativePlatform()) {
+            PushNotifications.checkPermissions().then(result => {
+                setNotifPermission(result.receive);
+            }).catch(() => { });
+        }
+
         // Native Push Listeners
         if (Capacitor.isNativePlatform()) {
             PushNotifications.addListener('registration', (token) => {
