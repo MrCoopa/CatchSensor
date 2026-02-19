@@ -524,12 +524,20 @@ const Setup = ({ onLogout }) => {
     };
 
     const checkPushSubscription = async () => {
-        if (navigator.serviceWorker) {
-            const registration = await navigator.serviceWorker.ready;
-            const subscription = await registration.pushManager.getSubscription();
-            if (subscription) {
-                setPushEnabled(true);
+        if (!navigator.serviceWorker) return;
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration) {
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) {
+                    console.log('checkPushSubscription: Active sub found:', subscription.endpoint.substring(0, 30));
+                    setPushEnabled(true);
+                } else {
+                    setPushEnabled(false);
+                }
             }
+        } catch (err) {
+            console.warn('checkPushSubscription error:', err);
         }
     };
 
@@ -553,22 +561,43 @@ const Setup = ({ onLogout }) => {
         try {
             // Android 13+ explicit permission request
             if ('Notification' in window && Notification.permission !== 'granted') {
+                setStatusMessage({ text: 'Frage Berechtigung an...', type: '' });
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
-                    setStatusMessage({ text: 'Benachrichtigungen wurden abgelehnt. Bitte in den Systemeinstellungen aktivieren.', type: 'error' });
+                    setStatusMessage({ text: 'Berechtigung abgelehnt. Bitte in Android-Chrome-Einstellungen erlauben.', type: 'error' });
                     return;
                 }
             }
 
-            console.log('TogglePush: Checking registration...');
-            let registration = await navigator.serviceWorker.getRegistration();
-            console.log('TogglePush: Registration found:', !!registration);
+            console.log('TogglePush: Checking registration with timeout...');
+            setStatusMessage({ text: 'Prüfe Service Worker...', type: '' });
 
-            if (!registration || !registration.active) {
-                console.log('TogglePush: No active registration, waiting for .ready...');
-                setStatusMessage({ text: 'Warte auf Aktivierung...', type: '' });
-                registration = await navigator.serviceWorker.ready;
-                console.log('TogglePush: .ready resolved');
+            // Timeout helper to avoid infinite waiting on mobile
+            const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('SW_TIMEOUT')), ms));
+
+            let registration;
+            try {
+                // Try getting current or waiting for ready with a 5s limit
+                registration = await Promise.race([
+                    navigator.serviceWorker.ready,
+                    timeout(5000)
+                ]);
+            } catch (swErr) {
+                if (swErr.message === 'SW_TIMEOUT') {
+                    console.log('TogglePush: SW Ready timed out, attempting manual registration...');
+                    setStatusMessage({ text: 'SW braucht zu lange, registriere neu...', type: '' });
+                    registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                } else {
+                    throw swErr;
+                }
+            }
+
+            console.log('TogglePush: Registration active:', registration?.active?.state || 'no-active');
+
+            if (!registration.active) {
+                setStatusMessage({ text: 'SW wird aktiviert...', type: '' });
+                // Small wait for activation
+                await new Promise(r => setTimeout(r, 1000));
             }
 
             if (pushEnabled) {
@@ -598,6 +627,7 @@ const Setup = ({ onLogout }) => {
             }
 
             console.log('TogglePush: Mode = ACTIVATE');
+            setStatusMessage({ text: 'Erstelle Browser-Abo...', type: '' });
             console.log('TogglePush: Calling pushManager.subscribe...');
             const sub = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
@@ -605,7 +635,7 @@ const Setup = ({ onLogout }) => {
             });
             console.log('TogglePush: Browser subscription success! Endpoint:', sub.endpoint.substring(0, 30));
 
-            setStatusMessage({ text: 'Speichere am Server...', type: '' });
+            setStatusMessage({ text: 'Übermittle an Server...', type: '' });
             const token = localStorage.getItem('token');
             console.log('TogglePush: Sending to backend /api/notifications/subscribe...');
 
