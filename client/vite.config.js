@@ -41,6 +41,7 @@ export default defineConfig({
         name: 'CatchSensor Professional',
         short_name: 'CatchSensor',
         description: 'Professionelle Fangüberwachung für Reviere',
+        categories: ['productivity', 'utilities'],
         id: '/',
         theme_color: '#1b3a2e',
         background_color: '#1b3a2e',

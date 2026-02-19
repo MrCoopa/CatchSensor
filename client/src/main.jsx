@@ -26,15 +26,5 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Extra aggressive manual registration for mobile (Dev Mode Fix)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    const swPath = import.meta.env.DEV ? '/dev-sw.js?dev-sw' : '/sw.js';
-    navigator.serviceWorker.register(swPath, { scope: '/', type: 'module' })
-      .then(reg => console.log('SW manual register success:', reg))
-      .catch(err => {
-        console.error('SW manual register fail:', err);
-        window.swError = err;
-      });
-  });
-}
+// Extra aggressive manual registration removed to prevent conflicts with virtual:pwa-register
+// if ('serviceWorker' in navigator) { ... }
