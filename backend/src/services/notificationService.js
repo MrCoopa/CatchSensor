@@ -84,7 +84,23 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
             if (subscriptions.length > 0) {
                 for (const sub of subscriptions) {
                     try {
-                        await sendPushNotification(catchSensor, { endpoint: sub.endpoint, keys: sub.keys }, notificationTitle, messageText);
+                        let currentKeys = sub.keys;
+                        let parseAttempts = 0;
+                        while (typeof currentKeys === 'string' && parseAttempts < 3) {
+                            try {
+                                currentKeys = JSON.parse(currentKeys);
+                            } catch (e) {
+                                break;
+                            }
+                            parseAttempts++;
+                        }
+
+                        if (!currentKeys || typeof currentKeys !== 'object' || !currentKeys.p256dh || !currentKeys.auth) {
+                            console.warn(`NotificationEngine: Invalid keys for sub ${sub.id}. Skipping.`);
+                            continue;
+                        }
+
+                        await sendPushNotification(catchSensor, { endpoint: sub.endpoint, keys: currentKeys }, notificationTitle, messageText);
                     } catch (err) {
                         console.error('NotificationEngine: Web-Push failed for sub:', sub.id, err.message);
                     }
