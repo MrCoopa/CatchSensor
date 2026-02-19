@@ -3,21 +3,31 @@ const path = require('path');
 const fs = require('fs');
 
 // Initialize Firebase Admin SDK
-// Looks for serviceAccountKey.json in the backend root
+// Priority: 1. FIREBASE_SERVICE_ACCOUNT_B64 env var, 2. serviceAccountKey.json file
 const serviceAccountPath = path.join(__dirname, '../../serviceAccountKey.json');
 let firebaseInitialized = false;
 
 try {
-    // Check if the file exists AND is actually a file (Docker can create empty dirs for missing volumes)
-    if (fs.existsSync(serviceAccountPath) && fs.lstatSync(serviceAccountPath).isFile()) {
-        const serviceAccount = require(serviceAccountPath);
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
+    let serviceAccount = null;
+
+    // 1. Try env var first (preferred for Docker/Portainer)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_B64) {
+        const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8');
+        serviceAccount = JSON.parse(decoded);
+        console.log('Push Service: Firebase credentials loaded from env var. ✅');
+    }
+    // 2. Fallback to file (local dev)
+    else if (fs.existsSync(serviceAccountPath) && fs.lstatSync(serviceAccountPath).isFile()) {
+        serviceAccount = require(serviceAccountPath);
+        console.log('Push Service: Firebase credentials loaded from file. ✅');
+    }
+
+    if (serviceAccount) {
+        admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
         console.log('Push Service: Firebase Admin SDK initialized successfully. ✅');
         firebaseInitialized = true;
     } else {
-        console.warn('Push Service: ⚠️ serviceAccountKey.json not found in backend root. Native Push (FCM) will not work.');
+        console.warn('Push Service: ⚠️ No Firebase credentials found (env var or file). Native Push (FCM) will not work.');
     }
 } catch (error) {
     console.error('Push Service: ❌ Error initializing Firebase Admin SDK:', error.message);

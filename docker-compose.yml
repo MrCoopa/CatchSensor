@@ -18,15 +18,12 @@ services:
       - DB_NAME=catchsensor
       - NODE_ENV=production
       - JWT_SECRET=${JWT_SECRET}
-      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
       - VITE_API_URL=${VITE_API_URL}
       - APP_BASE_URL=${APP_BASE_URL}
+      - FIREBASE_SERVICE_ACCOUNT_B64=${FIREBASE_SERVICE_ACCOUNT_B64}
     depends_on:
       catchsensor_db:
         condition: service_healthy
-    volumes:
-      - ./backend/serviceAccountKey.json:/app/backend/serviceAccountKey.json:ro
     restart: always
 
   catchsensor_db:
