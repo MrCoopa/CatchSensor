@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import CatchCard from './CatchCard';
 import AddCatchModal from './AddCatchModal';
+import API_BASE from '../apiConfig';
 import CatchDetailsModal from './CatchDetailsModal';
 import { ArrowLeft } from 'lucide-react';
 
@@ -16,7 +17,7 @@ const Dashboard = ({ onLogout }) => {
     const fetchCatches = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/catches', {
+            const response = await fetch(`${API_BASE}/api/catches`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -56,8 +57,8 @@ const Dashboard = ({ onLogout }) => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        // Socket.io should also use relative path if proxied, or window.location.origin
-        const socket = io('/', {
+        // Socket.io should also use API_BASE for native path
+        const socket = io(API_BASE, {
             auth: {
                 token: token
             }

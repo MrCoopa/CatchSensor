@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Camera } from 'lucide-react';
+import API_BASE from '../apiConfig';
 import QRScanner from './QRScanner';
 
 const AddCatchModal = ({ isOpen, onClose, onAdd }) => {
@@ -32,7 +33,7 @@ const AddCatchModal = ({ isOpen, onClose, onAdd }) => {
         setError('');
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch('/api/catches', {
+            const response = await fetch(`${API_BASE}/api/catches`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

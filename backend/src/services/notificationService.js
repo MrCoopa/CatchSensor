@@ -1,5 +1,5 @@
 const Pushover = require('pushover-notifications');
-const { sendPushNotification } = require('./pushService');
+const { sendPushNotification, sendNativeNotification } = require('./pushService');
 const User = require('../models/User');
 const PushSubscription = require('../models/PushSubscription');
 
@@ -95,6 +95,20 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
                             parseAttempts++;
                         }
 
+                        // 3. Native Push (Capacitor) - Keys are null
+                        if (!currentKeys && sub.keys === null) {
+                            if (!currentKeys && sub.keys === null) {
+                                console.log(`NotificationEngine: Native Push (FCM) token found, forwarding to Firebase...`);
+                                await sendNativeNotification(sub.endpoint, notificationTitle, messageText, {
+                                    url: `/catch/${catchSensor.id}`,
+                                    catchId: catchSensor.id ? catchSensor.id.toString() : '',
+                                    type: type
+                                });
+                                continue;
+                            }
+                        }
+
+                        // 4. Web Push (Standard)
                         if (!currentKeys || typeof currentKeys !== 'object' || !currentKeys.p256dh || !currentKeys.auth) {
                             console.warn(`NotificationEngine: Invalid keys for sub ${sub.id}. Skipping.`);
                             continue;
@@ -102,7 +116,7 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
 
                         await sendPushNotification(catchSensor, { endpoint: sub.endpoint, keys: currentKeys }, notificationTitle, messageText);
                     } catch (err) {
-                        console.error('NotificationEngine: Web-Push failed for sub:', sub.id, err.message);
+                        console.error('NotificationEngine: Push failed for sub:', sub.id, err.message);
                     }
                 }
             }

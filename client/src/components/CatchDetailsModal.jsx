@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Battery, Signal } from 'lucide-react';
 import BatteryIndicator from './BatteryIndicator';
+import API_BASE from '../apiConfig';
 import SignalIndicator from './SignalIndicator';
 
 const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
@@ -11,7 +12,7 @@ const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
             const fetchReadings = async () => {
                 try {
                     const token = localStorage.getItem('token');
-                    const response = await fetch(`/api/readings/${catchSensor.id}`, {
+                    const response = await fetch(`${API_BASE}/api/readings/${catchSensor.id}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

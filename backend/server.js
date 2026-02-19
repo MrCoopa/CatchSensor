@@ -299,7 +299,7 @@ app.get('/api/status', async (req, res) => {
                 totalCatches: catchCount,
                 totalReadings: readingCount
             },
-            visualDashboard: 'http://192.168.2.217:5000/'
+            visualDashboard: process.env.APP_BASE_URL || 'http://localhost:5000/'
         });
     } catch (err) {
         res.status(500).json({ status: 'error', message: err.message });

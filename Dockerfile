@@ -4,6 +4,8 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm install --legacy-peer-deps
 COPY client/ ./
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # --- Stage 2: Production Server ---
