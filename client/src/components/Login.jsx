@@ -26,7 +26,8 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
                 setError(data.message || 'Login fehlgeschlagen');
             }
         } catch (err) {
-            setError('Verbindung zum Server fehlgeschlagen');
+            setError(`Verbindung fehlgeschlagen zu: ${API_BASE || 'ROOT'}`);
+            console.error('Login connection error:', err);
         }
     };
 
