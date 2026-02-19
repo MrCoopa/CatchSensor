@@ -9,12 +9,12 @@ const setupWatchdog = (io) => {
 
     cron.schedule('*/15 * * * *', async () => {
         console.log('Watchdog: Checking for offline catches...');
-        const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
+        const nineHoursAgo = new Date(Date.now() - 9 * 60 * 60 * 1000);
 
         try {
             const offlineCatches = await CatchSensor.findAll({
                 where: {
-                    lastSeen: { [Op.lt]: eightHoursAgo },
+                    lastSeen: { [Op.lt]: nineHoursAgo },
                     status: { [Op.ne]: 'inactive' }
                 }
             });

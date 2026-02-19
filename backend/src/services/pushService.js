@@ -26,11 +26,27 @@ const sendPushNotification = async (catchSensor, type, subscription) => {
         }
     }
 
+    let title = `⚠️ System-Info: Batterie von ${catchSensor.name} niedrig (${catchSensor.batteryPercent || '0'}%)`;
+    let body = `Batterie bei "${catchSensor.name}" niedrig. (${(catchSensor.batteryVoltage / 1000).toFixed(2)}V) (${catchSensor.batteryPercent || '0'}%)`;
+
+    if (type === 'ALARM') {
+        title = `🚨 FANG-GEMELDET: ${catchSensor.name} !`;
+        body = `${catchSensor.name} hat ausgelöst!`;
+    } else if (type === 'TEST') {
+        title = '🧪 Test-Modus';
+        body = 'Testnachricht für PWA SW Push';
+    } else if (type === 'CONNECTION_LOST') {
+        const diffMs = Date.now() - new Date(catchSensor.lastSeen).getTime();
+        const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+        const timeStr = `${diffHours} Stunden`;
+
+        title = `WARNUNG: ${catchSensor.name} ist Offline seit ${timeStr}`;
+        body = `${catchSensor.name} hat seit ${timeStr} keinen Status gesendet.`;
+    }
+
     const payload = JSON.stringify({
-        title: type === 'ALARM' ? '🚨 FANG-ALARM!' : '⚠️ System-Info',
-        body: type === 'ALARM'
-            ? `Fallenmelder "${catchSensor.name}" hat ausgelöst!`
-            : `Batterie bei "${catchSensor.name}" niedrig.`,
+        title,
+        body,
         data: {
             url: `/catch/${catchSensor.id}`,
             t: Date.now()

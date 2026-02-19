@@ -5,15 +5,3 @@ dist/
 build/
 coverage/
 .vscode/
-*.pid
-
-# Certificates
-*.key
-*.crt
-*.csr
-*.pem
-*.p12
-*.pfx
-*.der
-san.cnf
-

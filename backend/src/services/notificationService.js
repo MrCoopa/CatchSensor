@@ -26,13 +26,33 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
 
         console.log(`NotificationEngine: Sending ${type} for CatchSensor [${catchSensor.alias || catchSensor.deviceId || catchSensor.imei}] to User [${user.id}]`);
 
-        const messageText = customMessage || (
-            type === 'ALARM'
-                ? `Fallenmelder "${catchSensor.alias || catchSensor.name || catchSensor.imei}" hat ausgelöst!`
-                : type === 'LOW_BATTERY'
-                    ? `Batterie schwach bei "${catchSensor.alias || catchSensor.name || catchSensor.imei}": ${catchSensor.batteryPercent}%`
-                    : `Status-Update für "${catchSensor.alias || catchSensor.name || catchSensor.imei}".`
-        );
+        let messageText = customMessage;
+
+        if (!messageText) {
+            if (type === 'ALARM') {
+                messageText = `${catchSensor.alias || catchSensor.name || catchSensor.imei} hat ausgelöst!`;
+            } else if (type === 'LOW_BATTERY') {
+                const voltStr = catchSensor.batteryVoltage ? ` (${(catchSensor.batteryVoltage / 1000).toFixed(2)}V)` : '';
+                messageText = `Batterie bei "${catchSensor.alias || catchSensor.name || catchSensor.imei}" niedrig.${voltStr} (${catchSensor.batteryPercent || '0'}%)`;
+            } else if (type === 'CONNECTION_LOST') {
+                const diffMs = Date.now() - new Date(catchSensor.lastSeen).getTime();
+                const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+                messageText = `${catchSensor.alias || catchSensor.name || catchSensor.imei} hat seit ${diffHours} Stunden keinen Status gesendet.`;
+            } else {
+                messageText = `Status-Update für "${catchSensor.alias || catchSensor.name || catchSensor.imei}".`;
+            }
+        }
+
+        let notificationTitle = '⚠️ System-Info';
+        if (type === 'ALARM') {
+            notificationTitle = `🚨 FANG-GEMELDET: ${catchSensor.alias || catchSensor.name || catchSensor.imei} !`;
+        } else if (type === 'LOW_BATTERY') {
+            notificationTitle = `⚠️ System-Info: Batterie von ${catchSensor.alias || catchSensor.name || catchSensor.imei} niedrig (${catchSensor.batteryPercent || '0'}%)`;
+        } else if (type === 'CONNECTION_LOST') {
+            const diffMs = Date.now() - new Date(catchSensor.lastSeen).getTime();
+            const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+            notificationTitle = `WARNUNG: ${catchSensor.alias || catchSensor.name || catchSensor.imei} ist Offline seit ${diffHours} Stunden`;
+        }
 
         // 1. Web-Push (PWA)
         if (user.pushEnabled !== false) {
@@ -56,7 +76,7 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
             });
 
             const msg = {
-                title: type === 'ALARM' ? '🚨 FANG-ALARM!' : '⚠️ System-Info',
+                title: notificationTitle,
                 message: messageText,
                 sound: type === 'ALARM' ? 'siren' : 'none',
                 priority: type === 'ALARM' ? 1 : 0,

@@ -41,3 +41,26 @@ Damit die Browser-Warnung verschwindet, brauchst du ein gültiges Zertifikat.
 
 ### DNS-Eintrag
 Vergiss nicht, in deinem Router (z.B. FritzBox) oder in deinem lokalen DNS (Pi-hole/AdGuard) einen Eintrag zu erstellen, der `catchsensor.home` auf die IP deines Servers zeigt.
+
+## 4. Problembehebung Push (Android Chrome)
+
+Wenn Chrome meldet: `Failed to register a ServiceWorker... An SSL certificate error occurred`, liegt das daran, dass Chrome für Service Worker ein **vertrauenswürdiges** Zertifikat verlangt. Ein einfaches "Beibehalten" der HTTPS-Warnung reicht hier nicht aus.
+
+### Lösung A: Chrome "Insecure Origins" Flag (Sicherster & Einfachster Weg)
+Du kannst Chrome sagen, dass er deine lokale Adresse als "sicher" behandeln soll, auch ohne echtes Zertifikat:
+
+1. Öffne Chrome auf dem Handy.
+2. Gib in die Adresszeile ein: `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+3. Suche das Feld **"Insecure origins treated as secure"**.
+4. Trage dort deine Adresse ein (exakt so wie in der URL-Zeile): `https://catchsensor.home`
+5. Stelle den Schalter daneben auf **"Enabled"**.
+6. Tippe unten auf **"Relaunch"**.
+
+### Lösung B: Zertifikat im System installieren
+Alternativ kannst du das Zertifikat direkt in Android importieren:
+
+1. Lade die Datei `server.crt` auf dein Handy (z.B. per E-Mail oder USB).
+2. Gehe zu **Einstellungen -> Sicherheit -> Weitere Sicherheitseinstellungen -> Verschlüsselung & Vorreiter -> Von Speicher installieren -> CA-Zertifikat**.
+3. Wähle die `server.crt` Datei aus.
+4. (Je nach Android-Version variiert der Pfad, suche nach "Zertifikat" in den Einstellungen).
+5. Starte Chrome neu.
