@@ -20,7 +20,7 @@ services:
     restart: always
 
   catchsensor_db:
-    image: mariadb:10.11
+    image: mariadb:latest
     container_name: catchsensor_db
     environment:
       MYSQL_ROOT_PASSWORD: root
