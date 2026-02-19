@@ -15,8 +15,6 @@ services:
       - DB_NAME=catchsensor
       - NODE_ENV=production
       - JWT_SECRET=please_change_this_for_production
-    env_file:
-      - .env
     depends_on:
       catchsensor_db:
         condition: service_healthy
