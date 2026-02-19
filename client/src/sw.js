@@ -29,42 +29,44 @@ self.addEventListener('message', (event) => {
 
 precacheAndRoute(self.__WB_MANIFEST || [])
 
-// Hardened Push Event Listener
+// Hardened Push Event Listener for maximum Android compatibility
 self.addEventListener('push', (event) => {
     broadcastLog('SW: Push-Event empfangen 🔔');
-    let data = {
-        title: 'CatchSensor Meldung',
-        body: 'Es gibt eine neue Information.',
-    };
 
-    try {
-        if (event.data) {
-            const rawData = event.data.text();
-            broadcastLog('SW: Raw push data: ' + rawData);
-
-            try {
-                const jsonData = JSON.parse(rawData);
-                data = { ...data, ...jsonData };
-                broadcastLog('SW: JSON-Parsing Erfolg');
-            } catch (jsonErr) {
-                broadcastLog('SW: Kein JSON, nutze Text-Body');
-                data.body = rawData;
-            }
-        }
-    } catch (e) {
-        broadcastLog('SW: Fehler beim Verarbeiten: ' + e.message, 'error');
-    }
-
-    const title = data.title || 'CatchSensor!';
-    const options = {
-        body: data.body || 'Neue Information verfügbar.',
+    // Always provide a fallback to ensure Android (Chrome) doesn't suppress the notification
+    // If showNotification isn't called, Chrome may stop delivering pushes to the site.
+    let pushData = {
+        title: 'CatchSensor Nachricht',
+        body: 'Es gibt eine neue Statusmeldung.',
         icon: '/icons/fox-logo.png',
-        badge: '/icons/fox-logo.png', // Small monochrome icon for status bar
+        badge: '/icons/fox-logo.png',
         vibrate: [100, 50, 100],
         tag: 'catchsensor-notification',
+        data: { url: '/' }
+    };
+
+    if (event.data) {
+        try {
+            // Try parsing as JSON first
+            const json = event.data.json();
+            broadcastLog('SW: JSON-Parsing erfolgreich');
+            pushData = { ...pushData, ...json };
+        } catch (err) {
+            broadcastLog('SW: JSON-Fehler, nutze Text-Fallback');
+            pushData.body = event.data.text();
+        }
+    }
+
+    const title = pushData.title || 'CatchSensor!';
+    const options = {
+        body: pushData.body || 'Neue Info verfügbar.',
+        icon: pushData.icon || '/icons/fox-logo.png',
+        badge: pushData.badge || '/icons/fox-logo.png',
+        vibrate: pushData.vibrate || [100, 50, 100],
+        tag: pushData.tag || 'catchsensor-notification',
         renotify: true,
         requireInteraction: true,
-        data: data.data || { url: '/' },
+        data: pushData.data || { url: '/' },
         actions: [
             { action: 'open', title: 'Öffnen' },
             { action: 'close', title: 'Schließen' }
@@ -74,7 +76,11 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(title, options)
             .then(() => broadcastLog('SW: Benachrichtigung angezeigt ✅'))
-            .catch(err => broadcastLog('SW: showNotification FEHLER ❌: ' + err.message, 'error'))
+            .catch(err => {
+                broadcastLog('SW: showNotification FEHLER ❌: ' + err.message, 'error');
+                // Absolute last resort for Chromium browsers
+                return self.registration.showNotification('CatchSensor Alpha', { body: 'Meldung eingegangen.' });
+            })
     );
 });
 
