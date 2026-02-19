@@ -76,8 +76,9 @@ exports.testNotification = async (req, res) => {
             try {
                 await sendPushNotification(
                     { name: 'Test-Device', location: 'System', id: 'test' },
-                    'TEST',
-                    { endpoint: sub.endpoint, keys: currentKeys }
+                    { endpoint: sub.endpoint, keys: currentKeys },
+                    'Test-Nachricht',
+                    'Diese Nachricht bestätigt, dass PWA Push-Benachrichtigungen funktionieren. 🦊'
                 );
                 sentCount++;
             } catch (err) {

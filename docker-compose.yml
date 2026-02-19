@@ -15,6 +15,8 @@ services:
       - DB_NAME=catchsensor
       - NODE_ENV=production
       - JWT_SECRET=please_change_this_for_production
+      - VAPID_PUBLIC_KEY=BOdTRVZKIrVc-99p6QRG62kD2UlLHSj-WhVra88fmRoyoUC1FW6Z0jw3s--LTYmZFAOfVVlY2mydpy9U2VM0BI_4
+      - VAPID_PRIVATE_KEY=AGIIklilGKE8KUm0AeaBduHN88t0m3p_baCWuaNOww8
     depends_on:
       catchsensor_db:
         condition: service_healthy

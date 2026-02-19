@@ -30,6 +30,8 @@ const Setup = ({ onLogout }) => {
     const [offlineAlertInterval, setOfflineAlertInterval] = useState(24);
     const [catchAlertInterval, setCatchAlertInterval] = useState(1);
     const [showPushover, setShowPushover] = useState(false);
+    const [vapidPublicKey, setVapidPublicKey] = useState(null);
+
 
     const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -260,6 +262,7 @@ const Setup = ({ onLogout }) => {
                 setOfflineAlertInterval(userData.offlineAlertInterval || 24);
                 setCatchAlertInterval(userData.catchAlertInterval || 1);
                 if (userData.pushEnabled !== undefined) setPushEnabled(userData.pushEnabled);
+                if (userData.vapidPublicKey) setVapidPublicKey(userData.vapidPublicKey);
             }
 
             if (catchesRes.ok) setCatches(await catchesRes.json());
@@ -517,7 +520,7 @@ const Setup = ({ onLogout }) => {
             return;
         }
 
-        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+        const vapidKey = vapidPublicKey || import.meta.env.VITE_VAPID_PUBLIC_KEY;
         console.log('TogglePush: VAPID Key available:', !!vapidKey);
         if (!vapidKey) {
             setStatusMessage({ text: 'Fehler: VAPID Key fehlt (Neustart erforderlich?).', type: 'error' });
