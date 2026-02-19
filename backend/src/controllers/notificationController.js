@@ -1,5 +1,6 @@
 const PushSubscription = require('../models/PushSubscription');
-const { sendPushNotification } = require('../services/pushService');
+const { sendNativeNotification } = require('../services/pushService');
+
 const sequelize = require('../config/database');
 
 exports.subscribe = async (req, res) => {
@@ -11,28 +12,21 @@ exports.subscribe = async (req, res) => {
             return res.status(400).json({ error: 'Invalid subscription object' });
         }
 
-        // Helper to ensure we store keys as an object
-        // (Though Sequelize JSON type should handle it, we want to be safe)
-        let subKeys = subscription.keys;
-        if (typeof subKeys === 'string') {
-            try { subKeys = JSON.parse(subKeys); } catch (e) { }
-        }
-
         let sub = await PushSubscription.findOne({ where: { endpoint: subscription.endpoint } });
 
         if (sub) {
             sub.userId = userId;
-            sub.keys = subKeys;
+            sub.keys = null; // Ensure keys are always null for pure native tokens
             await sub.save();
         } else {
             await PushSubscription.create({
                 endpoint: subscription.endpoint,
-                keys: subKeys,
+                keys: null,
                 userId: userId
             });
         }
 
-        res.status(201).json({ message: 'Subscription saved.' });
+        res.status(201).json({ message: 'Subscription saved (Native).' });
     } catch (error) {
         console.error('Subscribe Error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -81,47 +75,17 @@ exports.testNotification = async (req, res) => {
 
         let sentCount = 0;
         for (const sub of subscriptions) {
-            // Robust parsing for keys
-            let currentKeys = sub.keys;
             try {
-                if (typeof currentKeys === 'string') currentKeys = JSON.parse(currentKeys);
-                if (typeof currentKeys === 'string') currentKeys = JSON.parse(currentKeys); // Double parse for legacy
-            } catch (e) { }
-
-            // 1. Native Push (Capacitor/FCM) - No Keys
-            if (!currentKeys && sub.keys === null) {
-                try {
-                    console.log(`Test Notification: Sending Native FCM to ${sub.endpoint.substring(0, 15)}...`);
-                    await sendNativeNotification(
-                        sub.endpoint,
-                        '🧪 Test-Push (Native)',
-                        'Diese Nachricht bestätigt, dass Native Push-Benachrichtigungen funktionieren. 🦊',
-                        { type: 'TEST', url: '/setup' }
-                    );
-                    sentCount++;
-                } catch (err) {
-                    console.error('Test Notification: Native Push failed:', err.message);
-                }
-                continue;
-            }
-
-            // 2. Web Push (Standard) - Requires Keys
-            if (!currentKeys || typeof currentKeys !== 'object' || !currentKeys.p256dh || !currentKeys.auth) {
-                console.warn(`Test Notification: ⚠️ Invalid keys for web sub ${sub.id}. Cleaning up.`);
-                await sub.destroy();
-                continue;
-            }
-
-            try {
-                await sendPushNotification(
-                    { name: 'Test-Device', location: 'System', id: 'test' },
-                    { endpoint: sub.endpoint, keys: currentKeys },
-                    '🧪 Test-Push (Web)',
-                    'Diese Nachricht bestätigt, dass PWA Push-Benachrichtigungen funktionieren. 🦊'
+                console.log(`Test Notification: Sending Native FCM to ${sub.endpoint.substring(0, 15)}...`);
+                await sendNativeNotification(
+                    sub.endpoint,
+                    '🧪 Test-Push (Native)',
+                    'Diese Nachricht bestätigt, dass Native Push-Benachrichtigungen funktionieren. 🦊',
+                    { type: 'TEST', url: '/setup' }
                 );
                 sentCount++;
             } catch (err) {
-                console.error(`Test Notification Failed for ${sub.endpoint.substring(0, 20)}...`, err.message);
+                console.error('Test Notification: Native Push failed:', err.message);
             }
         }
 

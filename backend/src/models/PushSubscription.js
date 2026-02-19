@@ -8,13 +8,9 @@ const PushSubscription = sequelize.define('PushSubscription', {
         autoIncrement: true
     },
     endpoint: {
-        type: DataTypes.TEXT, // Endpoints can be long
+        type: DataTypes.TEXT, // Endpoints are FCM tokens for native
         allowNull: false,
         unique: true
-    },
-    keys: {
-        type: DataTypes.JSON, // Stores p256dh and auth (Null for Native Push)
-        allowNull: true
     },
     userId: {
         type: DataTypes.UUID,

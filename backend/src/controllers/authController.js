@@ -85,10 +85,7 @@ const getMe = async (req, res) => {
         attributes: { exclude: ['password'] }
     });
     if (user) {
-        // Add VAPID public key to the response so the frontend doesn't need it at build time
-        const response = user.toJSON();
-        response.vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-        res.json(response);
+        res.json(user.toJSON());
     } else {
         res.status(404).json({ message: 'User not found' });
     }

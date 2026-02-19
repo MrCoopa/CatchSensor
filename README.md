@@ -1,6 +1,6 @@
 # 🦊 CatchSensor: Professionelles Fallen-Monitoring
 
-**CatchSensor** ist eine hochmoderne IoT-Plattform zur Echtzeit-Überwachung von Fallenmeldern. Entwickelt für Jäger und Naturschützer, kombiniert CatchSensor maximale Zuverlässigkeit mit intuitiver Bedienung durch eine Hybrid-Architektur (PWA & Native Android).
+**CatchSensor** ist eine hochmoderne IoT-Plattform zur Echtzeit-Überwachung von Fallenmeldern. Entwickelt für Jäger und Naturschützer, kombiniert CatchSensor maximale Zuverlässigkeit mit intuitiver Bedienung durch eine native Android-App (Capacitor).
 
 ---
 
@@ -12,11 +12,10 @@ CatchSensor ist hersteller- und protokollunabhängig. Es vereint verschiedene We
 - **LoRaWAN (TTN) Support**: Nahtlose Integration von The Things Network Geräten.
 - **Echtzeit-Updates**: Dank **Socket.io** aktualisieren sich alle Statuswerte sofort ohne Seiten-Refresh.
 
-### 🔔 Intelligente Alarmierung (Triple-Alert)
-Verpassen Sie nie wieder einen Fang durch drei redundante Kanäle:
+### 🔔 Intelligente Alarmierung (Dual-Alert)
+Verpassen Sie nie wieder einen Fang durch zwei redundante Kanäle:
 1. **Native Push (Android)**: Google Firebase Integration für zuverlässige System-Benachrichtigungen auf dem Smartphone.
-2. **PWA Push (Web)**: Moderne Web-Push-Notification für Browser-Installationen.
-3. **Pushover-Dienst**: Optionale Anbindung für professionelle Alarm-Ketten (API-Token & User-Key).
+2. **Pushover-Dienst**: Optionale Anbindung für professionelle Alarm-Ketten (API-Token & User-Key).
 
 ### 🔋 Energiemanagement & Watchdog
 - **Präzise Überwachung**: Anzeige von Batteriespannung (V) und Ladestand (%) mit dynamischen Farbindikatoren.
@@ -66,7 +65,6 @@ Die Plattform ist vollständig dockerisiert und kann mit einem Befehl gestartet 
 | `VITE_API_URL` | Die URL unter der das Backend für die App erreichbar ist (z.B. `https://catchsensor.home`) |
 | `APP_BASE_URL` | Basis-URL für interne Links und System-Redirects |
 | `JWT_SECRET` | Geheimer Schlüssel für die Token-Authentifizierung |
-| `VAPID_KEYS` | Schlüsselpaar für Web-Push (PWA) |
 
 ---
 
@@ -82,9 +80,9 @@ In den Details eines Melders kann ein QR-Code generiert werden. Ein anderer Nutz
 
 ### Entwickler & Debugging
 In den Setup-Einstellungen gibt es ein (mit Klick auf den Pfeil) erweiterbares Debug-Menü. Hier können:
-- Push-Benachrichtigungen manuell getestet werden.
-- Registrierte Service-Worker eingesehen werden.
+- Native Push-Benachrichtigungen manuell getestet werden.
 - MQTT-Verbindungsstatus geprüft werden.
+- Der API-Token kopiert werden.
 
 ---
 *Entwickelt mit Präzision für höchste Zuverlässigkeit bei der Jagd.*

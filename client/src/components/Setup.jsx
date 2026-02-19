@@ -16,10 +16,6 @@ const Setup = ({ onLogout }) => {
         confirmPassword: ''
     });
     const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
-    const [swStatus, setSwStatus] = useState('Prüfe...');
-    const [notifPermission, setNotifPermission] = useState('default');
-    const [swLogs, setSwLogs] = useState([]);
-    const [showDebug, setShowDebug] = useState(false);
     const [selectedCatch, setSelectedCatch] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [catchToEdit, setCatchToEdit] = useState(null);
@@ -33,10 +29,8 @@ const Setup = ({ onLogout }) => {
     const [offlineAlertInterval, setOfflineAlertInterval] = useState(24);
     const [catchAlertInterval, setCatchAlertInterval] = useState(1);
     const [showPushover, setShowPushover] = useState(false);
-    const [vapidPublicKey, setVapidPublicKey] = useState(null);
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [isInstallable, setIsInstallable] = useState(false);
-    const [isSecure, setIsSecure] = useState(window.isSecureContext);
+    const [notifPermission, setNotifPermission] = useState('default');
+    const [showDebug, setShowDebug] = useState(false);
 
 
     const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -83,71 +77,6 @@ const Setup = ({ onLogout }) => {
 
 
     useEffect(() => {
-        const checkSW = async () => {
-            if (Capacitor.isNativePlatform()) {
-                setSwStatus('Native App (Capacitor) 📱');
-                return;
-            }
-
-            if (!Capacitor.isNativePlatform() && 'Notification' in window) {
-                setNotifPermission(Notification.permission);
-            }
-            if (navigator.serviceWorker) {
-                try {
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    let statusParts = [`Regs: ${regs.length}`];
-
-                    if (regs.length > 0) {
-                        const reg = regs[0];
-                        if (reg.installing) statusParts.push('⏳ Installiere...');
-                        if (reg.waiting) statusParts.push('💤 Wartet...');
-                        if (reg.active) statusParts.push('✅ Aktiv');
-                    }
-
-                    if (window.swError) {
-                        setSwStatus(`Fehler: ${window.swError.message}`);
-                    } else if (navigator.serviceWorker.controller) {
-                        setSwStatus(`Bereit ✅ (${statusParts.join(', ')})`);
-                    } else {
-                        setSwStatus(`Inaktiv ⚠️ (${statusParts.join(', ')})`);
-                    }
-                } catch (err) {
-                    setSwStatus(`System-Fehler: ${err.message}`);
-                }
-            } else {
-                setSwStatus('Nicht unterstützt ❌');
-            }
-        };
-
-
-        const handleInstallPrompt = (e) => {
-            console.log('PWA: beforeinstallprompt event fired! 🎉');
-            e.preventDefault();
-            setDeferredPrompt(e);
-            setIsInstallable(true);
-        };
-
-        window.addEventListener('beforeinstallprompt', handleInstallPrompt);
-        window.addEventListener('appinstalled', () => {
-            console.log('PWA: App installed success! ✅');
-            setIsInstallable(false);
-            setDeferredPrompt(null);
-        });
-
-        const timer = setTimeout(checkSW, 1000);
-        const interval = setInterval(checkSW, 3000); // Keep polling status
-
-        // Listen for SW debug logs
-        const handleSWMessage = (event) => {
-            if (event.data && event.data.type === 'SW_DEBUG_LOG') {
-                setSwLogs(prev => [`[${new Date().toLocaleTimeString()}] ${event.data.message}`, ...prev].slice(0, 10));
-            }
-        };
-
-        if ('serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
-            navigator.serviceWorker.addEventListener('message', handleSWMessage);
-        }
-
         // Native Push Listeners
         if (Capacitor.isNativePlatform()) {
             PushNotifications.addListener('registration', (token) => {
@@ -169,92 +98,12 @@ const Setup = ({ onLogout }) => {
         }
 
         return () => {
-            clearTimeout(timer);
-            clearInterval(interval);
-            window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.removeEventListener('message', handleSWMessage);
-            }
             if (Capacitor.isNativePlatform()) {
                 PushNotifications.removeAllListeners();
             }
         };
     }, []);
 
-    const handleInstallClick = async () => {
-        if (!deferredPrompt) return;
-        setStatusMessage({ text: 'Installation gestartet...', type: '' });
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`PWA: User choice: ${outcome}`);
-        setDeferredPrompt(null);
-        setIsInstallable(false);
-    };
-
-
-    const handleManualRegister = async () => {
-        if (!('serviceWorker' in navigator)) {
-            setStatusMessage({ text: 'Browser unterstützt keine Service Worker.', type: 'error' });
-            return;
-        }
-
-        // Use dev-sw.js with the query param for Vite PWA dev mode
-        const swPath = import.meta.env.DEV ? '/dev-sw.js?dev-sw' : '/sw.js';
-
-        setStatusMessage({ text: `Starte SW (${swPath})...`, type: '' });
-        try {
-            const reg = await navigator.serviceWorker.register(swPath, { scope: '/', type: 'module' });
-            setStatusMessage({ text: 'Registrierung gesendet! Bitte Seite neu laden.', type: 'success' });
-            console.log('Manual SW Registration successful:', reg);
-            setTimeout(() => window.location.reload(), 1500);
-        } catch (err) {
-            console.error('Manual SW Reg Error:', err);
-            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
-        }
-    };
-
-    const handleLocalTest = async () => {
-        if (!navigator.serviceWorker.controller) {
-            setStatusMessage({ text: 'Service Worker nicht aktiv oder Seite nicht "controlled".', type: 'error' });
-            return;
-        }
-        if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission !== 'granted') {
-            setStatusMessage({ text: `Hinweis: Berechtigung ist "${Notification.permission}". Bitte erlauben.`, type: 'error' });
-        }
-        setStatusMessage({ text: 'Sende lokalen Test-Befehl...', type: '' });
-        navigator.serviceWorker.controller.postMessage({ type: 'LOCAL_TEST' });
-        setTimeout(() => setStatusMessage({ text: 'Befehl gesendet. Prüfung am Handy!', type: 'success' }), 1000);
-    };
-
-    const handleMainThreadTest = async () => {
-        if (!('serviceWorker' in navigator)) {
-            setStatusMessage({ text: 'Service Worker nicht unterstützt.', type: 'error' });
-            return;
-        }
-        if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission !== 'granted') {
-            setStatusMessage({ text: 'Keine Berechtigung! Bitte erst anfordern.', type: 'error' });
-            return;
-        }
-        setStatusMessage({ text: 'Sende System-Test...', type: '' });
-        try {
-            const reg = await navigator.serviceWorker.ready;
-            console.log('Main thread testing with registration:', reg);
-
-            await reg.showNotification('System-Test Erfolg! 🦊', {
-                body: 'Diese Nachricht kommt direkt über den Service Worker Registrierung.',
-                icon: '/icons/fox-logo.png',
-                vibrate: [100, 50, 100],
-                badge: '/icons/fox-logo.png',
-                tag: 'test-notif-' + Date.now()
-            });
-
-            setStatusMessage({ text: 'Test-Befehl an System gesendet! ✅', type: 'success' });
-            console.log('reg.showNotification called successfully');
-        } catch (err) {
-            console.error('Main thread showNotification error:', err);
-            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
-        }
-    };
 
 
     const handleRequestPermission = async () => {
@@ -274,23 +123,7 @@ const Setup = ({ onLogout }) => {
             }
             return;
         }
-
-        if (Capacitor.isNativePlatform() || !('Notification' in window)) {
-            setStatusMessage({ text: 'Browser unterstützt keine Benachrichtigungen.', type: 'error' });
-            return;
-        }
-        setStatusMessage({ text: 'Fordere Berechtigung an...', type: '' });
-        try {
-            const permission = await Notification.requestPermission();
-            setNotifPermission(permission);
-            if (permission === 'granted') {
-                setStatusMessage({ text: 'Berechtigung erteilt! 🎉', type: 'success' });
-            } else {
-                setStatusMessage({ text: `Abgelehnt (${permission}). Bitte in Browsereinstellungen ändern.`, type: 'error' });
-            }
-        } catch (err) {
-            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
-        }
+        setStatusMessage({ text: 'Bitte nutzen Sie die App für Benachrichtigungen.', type: 'error' });
     };
 
     const handleClearPushSubscriptions = async () => {
@@ -314,24 +147,6 @@ const Setup = ({ onLogout }) => {
         }
     };
 
-    const handleForceCleanup = async () => {
-        if (!confirm('Dies löscht alle Service Worker und setzt die Push-Verbindung zurück. Fortfahren?')) return;
-        if (!navigator.serviceWorker) {
-            setStatusMessage({ text: 'Service Worker nicht verfügbar (Insecure Origin?).', type: 'error' });
-            return;
-        }
-        setStatusMessage({ text: 'Bereinige Service Worker...', type: '' });
-        try {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            for (let reg of regs) {
-                await reg.unregister();
-            }
-            setStatusMessage({ text: 'Bereinigt! Bitte Seite mit Strg+F5 neu laden.', type: 'success' });
-            setTimeout(() => window.location.reload(), 2000);
-        } catch (err) {
-            setStatusMessage({ text: `Fehler: ${err.message}`, type: 'error' });
-        }
-    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -358,7 +173,8 @@ const Setup = ({ onLogout }) => {
                 setOfflineAlertInterval(userData.offlineAlertInterval || 24);
                 setCatchAlertInterval(userData.catchAlertInterval || 1);
                 if (userData.pushEnabled !== undefined) setPushEnabled(userData.pushEnabled);
-                if (userData.vapidPublicKey) setVapidPublicKey(userData.vapidPublicKey);
+
+
             }
 
             if (catchesRes.ok) setCatches(await catchesRes.json());
@@ -582,40 +398,6 @@ const Setup = ({ onLogout }) => {
         }
     };
 
-    const [pushEnabled, setPushEnabled] = useState(false);
-
-    // URLBase64 to Uint8Array converter for VAPID
-    const urlBase64ToUint8Array = (base64String) => {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding)
-            .replace(/\-/g, '+')
-            .replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-    };
-
-    const checkPushSubscription = async () => {
-        if (Capacitor.isNativePlatform()) return; // Native status managed by userData
-        if (!navigator.serviceWorker) return;
-        try {
-            const registration = await navigator.serviceWorker.getRegistration();
-            if (registration && registration.pushManager) {
-                const subscription = await registration.pushManager.getSubscription();
-                if (subscription) {
-                    console.log('checkPushSubscription: Active sub found:', subscription.endpoint.substring(0, 30));
-                    setPushEnabled(true);
-                } else {
-                    setPushEnabled(false);
-                }
-            }
-        } catch (err) {
-            console.warn('checkPushSubscription error:', err);
-        }
-    };
 
 
 
@@ -647,165 +429,28 @@ const Setup = ({ onLogout }) => {
     };
 
     const togglePush = async () => {
-        console.log('--- TogglePush: START ---');
-
-        // NATIVE FLOW
-        if (Capacitor.isNativePlatform()) {
-            if (pushEnabled) {
-                // Unregister logic not fully supported by Capacitor plugin directly for "unregister", usually just backend removal
-                // But we can just tell backend to delete token
-                // For now, simple toggle state
-                setPushEnabled(false);
-                setStatusMessage({ text: 'Push deaktiviert (nur lokal Status).', type: '' });
-                return;
-            }
-
-            setStatusMessage({ text: 'Fordere Native Push an...', type: '' });
-            const permDetails = await PushNotifications.requestPermissions();
-            if (permDetails.receive === 'granted') {
-                PushNotifications.register();
-                // The 'registration' listener will handle the backend call
-            } else {
-                setStatusMessage({ text: 'Push-Berechtigung abgelehnt.', type: 'error' });
-            }
+        if (!Capacitor.isNativePlatform()) {
+            setStatusMessage({ text: 'Bitte nutzen Sie die App für Benachrichtigungen.', type: 'error' });
             return;
         }
 
-        // WEB FLOW
-        if (!('serviceWorker' in navigator)) {
-            console.error('TogglePush: No ServiceWorker support');
-            setStatusMessage({ text: 'Service Worker nicht vom Browser unterstützt.', type: 'error' });
+        if (pushEnabled) {
+            setPushEnabled(false);
+            setStatusMessage({ text: 'Push deaktiviert (lokal).', type: '' });
             return;
         }
 
-        const vapidKey = vapidPublicKey || import.meta.env.VITE_VAPID_PUBLIC_KEY;
-        console.log('TogglePush: VAPID Key available:', !!vapidKey);
-        if (!vapidKey) {
-            setStatusMessage({ text: 'Fehler: VAPID Key fehlt (Neustart erforderlich?).', type: 'error' });
-            return;
-        }
-
-        setStatusMessage({ text: 'Verarbeite...', type: '' });
-
-        try {
-            // Android 13+ explicit permission request
-            if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission !== 'granted') {
-                setStatusMessage({ text: 'Frage Berechtigung an...', type: '' });
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') {
-                    setStatusMessage({ text: 'Berechtigung abgelehnt. Bitte in Android-Chrome-Einstellungen erlauben.', type: 'error' });
-                    return;
-                }
-            }
-
-            console.log('TogglePush: Checking registration with timeout...');
-            setStatusMessage({ text: 'Prüfe Service Worker...', type: '' });
-
-            // Timeout helper to avoid infinite waiting on mobile
-            const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('SW_TIMEOUT')), ms));
-
-            let registration;
-            try {
-                // Try getting current or waiting for ready with a 5s limit
-                registration = await Promise.race([
-                    navigator.serviceWorker.ready,
-                    timeout(5000)
-                ]);
-            } catch (swErr) {
-                if (swErr.message === 'SW_TIMEOUT') {
-                    console.log('TogglePush: SW Ready timed out, attempting manual registration...');
-                    setStatusMessage({ text: 'SW braucht zu lange, registriere neu...', type: '' });
-                    registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-                } else {
-                    throw swErr;
-                }
-            }
-
-            console.log('TogglePush: Registration active:', registration?.active?.state || 'no-active');
-
-            if (!registration.active) {
-                setStatusMessage({ text: 'SW wird aktiviert...', type: '' });
-                // Small wait for activation
-                await new Promise(r => setTimeout(r, 1000));
-            }
-
-            if (pushEnabled) {
-                console.log('TogglePush: Mode = DEACTIVATE');
-                const subscription = await registration.pushManager.getSubscription();
-                console.log('TogglePush: Existing subscription to unsubscribe:', !!subscription);
-
-                if (subscription) {
-                    // Tell backend to remove this endpoint
-                    const token = localStorage.getItem('token');
-                    await fetch(`${API_BASE}/api/notifications/unsubscribe`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ endpoint: subscription.endpoint })
-                    }).catch(err => console.error('Unsubscribe backend failed:', err));
-
-                    await subscription.unsubscribe();
-                    console.log('TogglePush: Unsubscribed browser.');
-                }
-
-                setPushEnabled(false);
-                setStatusMessage({ text: 'Push deaktiviert & vom Server entfernt.', type: 'success' });
-                return;
-            }
-
-            console.log('TogglePush: Mode = ACTIVATE');
-            setStatusMessage({ text: 'Erstelle Browser-Abo...', type: '' });
-            console.log('TogglePush: Calling pushManager.subscribe...');
-            const sub = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidKey)
-            });
-            console.log('TogglePush: Browser subscription success! Endpoint:', sub.endpoint.substring(0, 30));
-
-            setStatusMessage({ text: 'Übermittle an Server...', type: '' });
-            const token = localStorage.getItem('token');
-            console.log('TogglePush: Sending to backend /api/notifications/subscribe...');
-
-            const res = await fetch(`${API_BASE}/api/notifications/subscribe`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(sub)
-            });
-
-            console.log('TogglePush: Backend response status:', res.status);
-
-            if (res.ok) {
-                console.log('TogglePush: SUCCESS');
-                setPushEnabled(true);
-                setStatusMessage({ text: 'Push aktiviert! Teste...', type: 'success' });
-
-                // Optional: Instant test
-                await fetch(`${API_BASE}/api/notifications/test`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }).catch(e => console.error('TogglePush: Initial test failed', e));
-
-                setStatusMessage({ text: 'Aktiviert & Test gesendet! 🚀', type: 'success' });
-            } else {
-                const errData = await res.json().catch(() => ({}));
-                console.error('TogglePush: Backend ERROR:', res.status, errData);
-                throw new Error(`Server-Fehler: ${errData.error || 'Speichern fehlgeschlagen'}`);
-            }
-        } catch (err) {
-            console.error('--- TogglePush: CATCH ---');
-            console.error('Error detail:', err);
-            setStatusMessage({ text: `Push-Fehler: ${err.message}`, type: 'error' });
+        setStatusMessage({ text: 'Fordere Native Push an...', type: '' });
+        const permDetails = await PushNotifications.requestPermissions();
+        if (permDetails.receive === 'granted') {
+            PushNotifications.register();
+        } else {
+            setStatusMessage({ text: 'Push-Berechtigung abgelehnt.', type: 'error' });
         }
     };
 
-    useEffect(() => {
-        checkPushSubscription();
-    }, []);
+    const [pushEnabled, setPushEnabled] = useState(false);
+
 
     const fixMe = "cleanup"; // Removing the old misplaced function definitions here
 
@@ -902,37 +547,34 @@ const Setup = ({ onLogout }) => {
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Benachrichtigungen</label>
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
-                        {/* web push toggle - Hide on Native because it uses ServiceWorker logic. Native permission is managed in System Settings. */
-                            !Capacitor.isNativePlatform() && (
-                                <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
-                                    <div className="flex items-center space-x-4">
-                                        <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                                            <Shield size={20} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
-                                            <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
-                                        </div>
-                                    </div>
-                                    <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
-                                        <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                                    </div>
+                        <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
+                            <div className="flex items-center space-x-4">
+                                <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                    <Shield size={20} />
                                 </div>
-                            )}
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
+                                </div>
+                            </div>
+                            <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
+                                <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </div>
+                        </div>
 
-                        {pushEnabled && !Capacitor.isNativePlatform() && (
+                        {pushEnabled && (
                             <div className="px-4 pb-4 flex flex-col space-y-2">
                                 <button
                                     onClick={handleRemoteTestPush}
                                     className="w-full py-2 bg-gray-50 text-[#1b3a2e] text-[10px] font-black uppercase tracking-widest rounded-xl border border-gray-100 hover:bg-gray-100 transition-all"
                                 >
-                                    Test PWA Push senden
+                                    Push-Test senden
                                 </button>
                                 <button
                                     onClick={handleClearPushSubscriptions}
                                     className="w-full py-2 text-gray-400 hover:text-red-500 text-[9px] font-bold uppercase tracking-wider transition-all"
                                 >
-                                    Alle gespeicherten Endpunkte zurücksetzen
+                                    Push-Verbindung zurücksetzen
                                 </button>
                             </div>
                         )}
@@ -1335,61 +977,26 @@ const Setup = ({ onLogout }) => {
                         </div>
 
                         {showDebug && (
-                            <div className="border-t border-gray-50">
+                            <div className="border-t border-gray-50 divide-y divide-gray-50">
                                 <div className="p-4 flex items-center justify-between">
                                     <div className="flex items-center space-x-4">
-                                        <div className="bg-gray-100 p-2.5 rounded-2xl text-gray-400">
-                                            <Shield size={20} />
+                                        <div className={`p-2.5 rounded-2xl ${notifPermission === 'granted' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                            <Info size={20} />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-gray-900">{Capacitor.isNativePlatform() ? 'App Status' : 'PWA Status'}</p>
-                                            <p className={`text-[10px] font-bold ${swStatus.includes('Aktiv') || Capacitor.isNativePlatform() ? 'text-green-600' : 'text-red-500'}`}>{swStatus}</p>
+                                            <p className="text-sm font-bold text-gray-900">Native Push Status</p>
+                                            <p className={`text-[10px] font-bold uppercase tracking-tight ${notifPermission === 'granted' ? 'text-green-600' : 'text-red-500'}`}>
+                                                {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Status offen'}
+                                            </p>
                                         </div>
                                     </div>
-                                </div>
-                                {Capacitor.isNativePlatform() && (
-                                    <div className="p-4 flex items-center justify-between border-t border-gray-50">
-                                        <div className="flex items-center space-x-4">
-                                            <div className={`p-2.5 rounded-2xl ${notifPermission === 'granted' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                                <Info size={20} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">Berechtigung</p>
-                                                <p className="text-[10px] font-bold uppercase tracking-tight">
-                                                    {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Ungeklärt'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {notifPermission !== 'granted' && (
-                                            <button
-                                                onClick={handleRequestPermission}
-                                                className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100 active:scale-95 transition-all"
-                                            >
-                                                Anfordern
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                                <div className="p-4 flex flex-col space-y-2 border-t border-gray-50 bg-amber-50/20">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-black text-amber-800 uppercase italic">Debug-Kontext:</span>
-                                        <span className="text-[10px] font-mono text-amber-600">{window.location.origin}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] text-gray-500">Controller:</span>
-                                        <span className={`text-[10px] font-bold ${navigator.serviceWorker?.controller ? 'text-green-600' : 'text-red-500'}`}>
-                                            {navigator.serviceWorker?.controller ? 'Aktiv / Verbunden' : 'Gezielt (Neu laden!)'}
-                                        </span>
-                                    </div>
-                                    {swLogs.length > 0 && (
-                                        <div className="mt-2 p-2 bg-black/5 rounded-lg font-mono text-[9px] text-gray-600 space-y-1">
-                                            <div className="font-bold border-b border-black/5 pb-1 mb-1">Live SW-Logs:</div>
-                                            {swLogs.map((log, i) => (
-                                                <div key={i} className={log.includes('FEHLER') ? 'text-red-600' : log.includes('Erfolg') ? 'text-green-600' : ''}>
-                                                    {log}
-                                                </div>
-                                            ))}
-                                        </div>
+                                    {notifPermission !== 'granted' && Capacitor.isNativePlatform() && (
+                                        <button
+                                            onClick={handleRequestPermission}
+                                            className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100 active:scale-95 transition-all"
+                                        >
+                                            Anfordern
+                                        </button>
                                     )}
                                 </div>
 
@@ -1401,7 +1008,7 @@ const Setup = ({ onLogout }) => {
                                         setStatusMessage({ text: 'Token in Zwischenablage kopiert! ✅', type: 'success' });
                                         setTimeout(() => setStatusMessage({ text: '', type: '' }), 3000);
                                     }}
-                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600">
@@ -1417,7 +1024,7 @@ const Setup = ({ onLogout }) => {
 
                                 <div
                                     onClick={testConnection}
-                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="bg-blue-50 p-2.5 rounded-2xl text-blue-600">
@@ -1433,7 +1040,7 @@ const Setup = ({ onLogout }) => {
                                 </div>
                                 <div
                                     onClick={handleRemoteTestPush}
-                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-orange-50 group transition-colors cursor-pointer"
+                                    className="p-4 flex items-center justify-between hover:bg-orange-50 group transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="bg-orange-50 p-2.5 rounded-2xl text-orange-600 group-hover:bg-orange-100">
@@ -1446,146 +1053,8 @@ const Setup = ({ onLogout }) => {
                                     </div>
                                     <ChevronRight size={18} className="text-gray-300" />
                                 </div>
-                                {!Capacitor.isNativePlatform() && (
-                                    <>
-                                        <div
-                                            onClick={handleLocalTest}
-                                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-amber-50 group transition-colors cursor-pointer"
-                                        >
-                                            <div className="flex items-center space-x-4">
-                                                <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600 group-hover:bg-amber-100">
-                                                    <Shield size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">SW Test-Notiz</p>
-                                                    <p className="text-[10px] text-gray-400 font-medium">Testet via Service Worker</p>
-                                                </div>
 
-                                            </div>
-                                            <ChevronRight size={18} className="text-gray-300" />
-                                        </div>
-                                        <div
-                                            onClick={handleMainThreadTest}
-                                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-purple-50 group transition-colors cursor-pointer"
-                                        >
-                                            <div className="flex items-center space-x-4">
-                                                <div className="bg-purple-50 p-2.5 rounded-2xl text-purple-600 group-hover:bg-purple-100">
-                                                    <Shield size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">Direct Test-Notiz</p>
-                                                    <p className="text-[10px] text-gray-400 font-medium">Testet via System-Interface</p>
-                                                </div>
 
-                                            </div>
-                                            <ChevronRight size={18} className="text-gray-300" />
-                                        </div>
-                                        <div
-                                            onClick={handleManualRegister}
-                                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-green-50 group transition-colors cursor-pointer"
-                                        >
-                                            <div className="flex items-center space-x-4">
-                                                <div className="bg-green-50 p-2.5 rounded-2xl text-green-600 group-hover:bg-green-100">
-                                                    <Settings size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">SW manuell starten</p>
-                                                    <p className="text-[10px] text-gray-400 font-medium">Erzwingt Registrierung (Mobile Fix)</p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={18} className="text-gray-300" />
-                                        </div>
-                                    </>
-                                )}
-
-                                {isInstallable && (
-                                    <div
-                                        onClick={handleInstallClick}
-                                        className="p-4 flex items-center justify-between border-t border-gray-50 bg-green-50 hover:bg-green-100 transition-colors cursor-pointer animate-pulse"
-                                    >
-                                        <div className="flex items-center space-x-4">
-                                            <div className="bg-white p-2.5 rounded-2xl text-green-600 shadow-sm">
-                                                <Settings size={20} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-black text-green-900">Voll-Installation jetzt starten</p>
-                                                <p className="text-[10px] text-green-700 font-bold uppercase tracking-wider">WebAPK-Modus verfügbar 🎉</p>
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={18} className="text-green-600" />
-                                    </div>
-                                )}
-
-                                {!Capacitor.isNativePlatform() && (
-                                    <div className="p-4 border-t border-gray-50 bg-gray-50/50">
-                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">PWA Diagnose</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Verschlüsselt (HTTPS/Secure):</span>
-                                                <span className={`text-[10px] font-black ${isSecure ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {isSecure ? 'JA ✅' : 'NEIN ⚠️'}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Service Worker Status:</span>
-                                                <span className={`text-[10px] font-black ${swStatus.includes('✅') ? 'text-green-600' : 'text-amber-500'}`}>
-                                                    {swStatus.split(' ')[0]}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Manifest erkannt:</span>
-                                                <span className={`text-[10px] font-black ${document.querySelector('link[rel="manifest"]') ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {document.querySelector('link[rel="manifest"]') ? 'JA ✅' : 'NEIN ❌'}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Installations-Prompt bereit:</span>
-                                                <span className={`text-[10px] font-black ${isInstallable ? 'text-green-600' : 'text-gray-400'}`}>
-                                                    {isInstallable ? 'BEREIT ✅' : 'WARTET...'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {!isInstallable && (
-                                            <p className="text-[9px] text-gray-400 mt-3 leading-tight italic">
-                                                Tipp: Wenn HTTPS fehlt, Chrome-Flag <b>#unsafely-treat-insecure-origin-as-secure</b> nutzen.
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
-                                {!Capacitor.isNativePlatform() && !isSecure && (
-                                    <div className="p-4 border-t border-gray-50 bg-red-50">
-                                        <div className="flex items-start space-x-3">
-                                            <Info size={16} className="text-red-500 mt-0.5 shrink-0" />
-                                            <div>
-                                                <p className="text-[11px] font-bold text-red-900 uppercase tracking-tight">Security Check Failed</p>
-                                                <p className="text-[10px] text-red-700 leading-relaxed mt-1">
-                                                    Chrome blockiert die Installation auf <code>http://</code>.
-                                                    Aktiviere in Chrome: <b>chrome://flags</b> → <b>"Insecure origins treated as secure"</b> →
-                                                    Trage <code>{window.location.origin}</code> ein.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                {!Capacitor.isNativePlatform() && (
-                                    <div
-                                        onClick={handleForceCleanup}
-                                        className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-red-50 group transition-colors cursor-pointer"
-                                    >
-                                        <div className="flex items-center space-x-4">
-                                            <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-100">
-                                                <Trash2 size={20} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">SW Fehler beheben</p>
-                                                <p className="text-[10px] text-gray-400 font-medium">Bereinigt & Repariert App-Cache</p>
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={18} className="text-gray-300" />
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
