@@ -9,7 +9,7 @@ const PushSubscription = require('../models/PushSubscription');
  */
 const sendUnifiedNotification = async (user, catchSensor, type, customMessage = null) => {
     try {
-        // Throttling logic based on user settings
+        // Throttling logic based on user settings (Identical for LoraWAN & NB-IoT)
         const batteryInterval = user.batteryAlertInterval || 24;
         const offlineInterval = user.offlineAlertInterval || 24;
         const catchInterval = user.catchAlertInterval || 1;
@@ -44,32 +44,38 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
 
         console.log(`NotificationEngine: Sending ${type} for CatchSensor [${catchSensor.alias || catchSensor.deviceId || catchSensor.imei}] to User [${user.id}]`);
 
+        // Centralized ID Fallback for consistency between LoraWAN and NB-IoT
+        const sensorName = catchSensor.alias || catchSensor.name || catchSensor.deviceId || catchSensor.imei || 'Unbekannt';
+
         let messageText = customMessage;
 
         if (!messageText) {
             if (type === 'ALARM') {
-                messageText = `${catchSensor.alias || catchSensor.name || catchSensor.imei} hat ausgelöst!`;
+                messageText = `${sensorName} hat ausgelöst!`;
             } else if (type === 'LOW_BATTERY') {
                 const voltStr = catchSensor.batteryVoltage ? ` (${(catchSensor.batteryVoltage / 1000).toFixed(2)}V)` : '';
-                messageText = `Batterie bei "${catchSensor.alias || catchSensor.name || catchSensor.imei}" niedrig.${voltStr} (${catchSensor.batteryPercent || '0'}%)`;
+                messageText = `Batterie bei "${sensorName}" niedrig.${voltStr} (${catchSensor.batteryPercent || '0'}%)`;
             } else if (type === 'CONNECTION_LOST') {
                 const diffMs = Date.now() - new Date(catchSensor.lastSeen).getTime();
                 const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-                messageText = `${catchSensor.alias || catchSensor.name || catchSensor.imei} hat seit ${diffHours} Stunden keinen Status gesendet.`;
+                messageText = `${sensorName} hat seit ${diffHours} Stunden keinen Status gesendet.`;
             } else {
-                messageText = `Status-Update für "${catchSensor.alias || catchSensor.name || catchSensor.imei}".`;
+                messageText = `Status-Update für "${sensorName}".`;
             }
         }
 
         let notificationTitle = '⚠️ System-Info';
         if (type === 'ALARM') {
-            notificationTitle = `🚨 FANG-GEMELDET: ${catchSensor.alias || catchSensor.name || catchSensor.imei} !`;
+            notificationTitle = `🚨 FANG-GEMELDET: ${sensorName} !`;
         } else if (type === 'LOW_BATTERY') {
-            notificationTitle = `⚠️ System-Info: Batterie von ${catchSensor.alias || catchSensor.name || catchSensor.imei} niedrig (${catchSensor.batteryPercent || '0'}%)`;
+            notificationTitle = `⚠️ System-Info: Batterie von ${sensorName} niedrig (${catchSensor.batteryPercent || '0'}%)`;
         } else if (type === 'CONNECTION_LOST') {
             const diffMs = Date.now() - new Date(catchSensor.lastSeen).getTime();
             const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-            notificationTitle = `WARNUNG: ${catchSensor.alias || catchSensor.name || catchSensor.imei} ist Offline seit ${diffHours} Stunden`;
+            notificationTitle = `WARNUNG: ${sensorName} ist Offline seit ${diffHours} Stunden`;
+        } else if (type === 'TEST') {
+            notificationTitle = '🧪 Test-Modus';
+            messageText = 'Testnachricht für PWA SW Push';
         }
 
         // 1. Web-Push (PWA)
@@ -78,7 +84,7 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
             if (subscriptions.length > 0) {
                 for (const sub of subscriptions) {
                     try {
-                        await sendPushNotification(catchSensor, type, { endpoint: sub.endpoint, keys: sub.keys });
+                        await sendPushNotification(catchSensor, { endpoint: sub.endpoint, keys: sub.keys }, notificationTitle, messageText);
                     } catch (err) {
                         console.error('NotificationEngine: Web-Push failed for sub:', sub.id, err.message);
                     }

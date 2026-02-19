@@ -14,27 +14,9 @@ if (PUBLIC_VAPID_KEY && PRIVATE_VAPID_KEY) {
     );
 }
 
-const sendPushNotification = async (catchSensor, type, subscription) => {
-    // Throttling is now handled centrally in notificationService.js
-    // to allow user-specific configurable intervals.
-
-    let title = `⚠️ System-Info: Batterie von ${catchSensor.name} niedrig (${catchSensor.batteryPercent || '0'}%)`;
-    let body = `Batterie bei "${catchSensor.name}" niedrig. (${(catchSensor.batteryVoltage / 1000).toFixed(2)}V) (${catchSensor.batteryPercent || '0'}%)`;
-
-    if (type === 'ALARM') {
-        title = `🚨 FANG-GEMELDET: ${catchSensor.name} !`;
-        body = `${catchSensor.name} hat ausgelöst!`;
-    } else if (type === 'TEST') {
-        title = '🧪 Test-Modus';
-        body = 'Testnachricht für PWA SW Push';
-    } else if (type === 'CONNECTION_LOST') {
-        const diffMs = Date.now() - new Date(catchSensor.lastSeen).getTime();
-        const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-        const timeStr = `${diffHours} Stunden`;
-
-        title = `WARNUNG: ${catchSensor.name} ist Offline seit ${timeStr}`;
-        body = `${catchSensor.name} hat seit ${timeStr} keinen Status gesendet.`;
-    }
+const sendPushNotification = async (catchSensor, subscription, title, body) => {
+    // Throttling and message generation is now handled centrally 
+    // in notificationService.js to ensure consistency across all channels.
 
     const payload = JSON.stringify({
         title,
@@ -52,9 +34,6 @@ const sendPushNotification = async (catchSensor, type, subscription) => {
         const result = await webpush.sendNotification(subscription, payload);
         console.log(`Push Service: Success! Status Code: ${result.statusCode}`);
 
-        if (type === 'LOW_BATTERY') {
-            await catchSensor.update({ lastBatteryAlert: new Date() });
-        }
     } catch (err) {
         console.error('Push Service: ❌ Error during webpush.sendNotification:', err);
         if (err.statusCode === 410 || err.statusCode === 404) {
