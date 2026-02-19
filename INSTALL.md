@@ -87,6 +87,13 @@ Um HTTPS und die Domain `https://catchsensor.home` zu nutzen:
 - Aktiviere **Websockets Support**.
 - Erstelle ein SSL-Zertifikat.
 
+### Portainer-spezifische Einstellungen
+Bei der Nutzung von Portainer (Git-Stack):
+1. **Keine `.env` Datei im Repo**: Portainer benötigt die Variablen im UI.
+2. Gehe in deinem Stack auf **"Environment variables"**.
+3. Füge alle Variablen aus der `.env` (z.B. `JWT_SECRET`, `VITE_API_URL`) dort manuell hinzu.
+4. Portainer injiziert diese dann automatisch in den Container.
+
 ---
 
 ## 7. Troubleshooting
