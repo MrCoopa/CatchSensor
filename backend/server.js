@@ -97,7 +97,27 @@ try {
     console.error('CRITICAL: Service initialization failed:', err);
 }
 
-app.use(cors()); // Simplest CORS for troubleshooting
+// 1. CORS Configuration (MOST IMPORTANT - MUST BE AT THE TOP)
+const allowedOrigins = [
+    'http://localhost',
+    'capacitor://localhost',
+    'https://catchsensor.home'
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost') || origin.startsWith('capacitor://localhost')) {
+            return callback(null, true);
+        }
+        callback(null, true); // Allow all during transition, but with explicit headers
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // Request Logger
