@@ -53,6 +53,12 @@ export default defineConfig({
         icons: [
           {
             src: '/icons/fox-logo.png',
+            sizes: '640x640',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/icons/fox-logo.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any'
@@ -65,7 +71,7 @@ export default defineConfig({
           },
           {
             src: '/icons/fox-logo.png',
-            sizes: '512x512',
+            sizes: '640x640',
             type: 'image/png',
             purpose: 'maskable'
           }

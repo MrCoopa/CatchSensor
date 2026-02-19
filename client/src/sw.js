@@ -29,6 +29,15 @@ self.addEventListener('message', (event) => {
 
 precacheAndRoute(self.__WB_MANIFEST || [])
 
+// Mandatory Fetch Handler for PWA Installability
+self.addEventListener('fetch', (event) => {
+    // We let Workbox handle the caching via precacheAndRoute,
+    // but the presence of this listener is a requirement for the "Install" prompt.
+    if (event.request.mode === 'navigate') {
+        // Optional: Could add custom offline logic here
+    }
+});
+
 // Hardened Push Event Listener for maximum Android compatibility
 self.addEventListener('push', (event) => {
     broadcastLog('SW: Push-Event empfangen 🔔');

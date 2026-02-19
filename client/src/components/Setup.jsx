@@ -31,6 +31,9 @@ const Setup = ({ onLogout }) => {
     const [catchAlertInterval, setCatchAlertInterval] = useState(1);
     const [showPushover, setShowPushover] = useState(false);
     const [vapidPublicKey, setVapidPublicKey] = useState(null);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isInstallable, setIsInstallable] = useState(false);
+    const [isSecure, setIsSecure] = useState(window.isSecureContext);
 
 
     const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -109,10 +112,23 @@ const Setup = ({ onLogout }) => {
         };
 
 
+        const handleInstallPrompt = (e) => {
+            console.log('PWA: beforeinstallprompt event fired! 🎉');
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setIsInstallable(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA: App installed success! ✅');
+            setIsInstallable(false);
+            setDeferredPrompt(null);
+        });
+
         const timer = setTimeout(checkSW, 1000);
         const interval = setInterval(checkSW, 3000); // Keep polling status
 
-        // Listen for SW debug logs
         // Listen for SW debug logs
         const handleSWMessage = (event) => {
             if (event.data && event.data.type === 'SW_DEBUG_LOG') {
@@ -127,11 +143,22 @@ const Setup = ({ onLogout }) => {
         return () => {
             clearTimeout(timer);
             clearInterval(interval);
+            window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.removeEventListener('message', handleSWMessage);
             }
         };
     }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        setStatusMessage({ text: 'Installation gestartet...', type: '' });
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA: User choice: ${outcome}`);
+        setDeferredPrompt(null);
+        setIsInstallable(false);
+    };
 
 
     const handleManualRegister = async () => {
@@ -1387,6 +1414,40 @@ const Setup = ({ onLogout }) => {
                                     </div>
                                     <ChevronRight size={18} className="text-gray-300" />
                                 </div>
+
+                                {isInstallable && (
+                                    <div
+                                        onClick={handleInstallClick}
+                                        className="p-4 flex items-center justify-between border-t border-gray-50 bg-green-50 hover:bg-green-100 transition-colors cursor-pointer animate-pulse"
+                                    >
+                                        <div className="flex items-center space-x-4">
+                                            <div className="bg-white p-2.5 rounded-2xl text-green-600 shadow-sm">
+                                                <Settings size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-green-900">Voll-Installation jetzt starten</p>
+                                                <p className="text-[10px] text-green-700 font-bold uppercase tracking-wider">WebAPK-Modus verfügbar 🎉</p>
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={18} className="text-green-600" />
+                                    </div>
+                                )}
+
+                                {!isSecure && (
+                                    <div className="p-4 border-t border-gray-50 bg-red-50">
+                                        <div className="flex items-start space-x-3">
+                                            <Info size={16} className="text-red-500 mt-0.5 shrink-0" />
+                                            <div>
+                                                <p className="text-[11px] font-bold text-red-900 uppercase tracking-tight">Unsichere Verbindung (HTTP)</p>
+                                                <p className="text-[10px] text-red-700 leading-relaxed mt-1">
+                                                    PWA-Vollinstallation ist nur über <b>HTTPS</b> oder <b>localhost</b> möglich.
+                                                    Auf Android müssen Sie die <b>#unsafely-treat-insecure-origin-as-secure</b> Flag für
+                                                    <code>{window.location.host}</code> in Chrome aktivieren.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div
                                     onClick={handleForceCleanup}
                                     className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-red-50 group transition-colors cursor-pointer"
