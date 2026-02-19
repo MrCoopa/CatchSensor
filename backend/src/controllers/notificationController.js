@@ -39,6 +39,34 @@ exports.subscribe = async (req, res) => {
     }
 };
 
+exports.unsubscribe = async (req, res) => {
+    try {
+        const { endpoint } = req.body;
+        if (!endpoint) {
+            // If no endpoint provided, we might want to clear all for this user?
+            // But let's be safe and only delete the current one.
+            return res.status(400).json({ error: 'Endpoint required' });
+        }
+
+        await PushSubscription.destroy({ where: { endpoint } });
+        res.json({ message: 'Unsubscribed successfully' });
+    } catch (error) {
+        console.error('Unsubscribe Error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.clearAllSubscriptions = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        await PushSubscription.destroy({ where: { userId } });
+        res.json({ message: 'Alle Benachrichtigungs-Abos gelöscht.' });
+    } catch (error) {
+        console.error('Clear Subscriptions Error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 exports.testNotification = async (req, res) => {
     try {
         const userId = req.user.id;

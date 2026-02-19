@@ -218,6 +218,27 @@ const Setup = ({ onLogout }) => {
         }
     };
 
+    const handleClearPushSubscriptions = async () => {
+        if (!confirm('Möchten Sie wirklich alle Benachrichtigungs-Abos für dieses Konto löschen?')) return;
+        setStatusMessage({ text: 'Lösche Abos...', type: '' });
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/notifications/clear-all', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setPushEnabled(false);
+                setStatusMessage({ text: 'Alle Push-Abos wurden gelöscht. ✅', type: 'success' });
+            } else {
+                setStatusMessage({ text: 'Fehler beim Löschen der Abos.', type: 'error' });
+            }
+        } catch (error) {
+            console.error('Clear push error:', error);
+            setStatusMessage({ text: 'Verbindungsfehler.', type: 'error' });
+        }
+    };
+
     const handleForceCleanup = async () => {
         if (!confirm('Dies löscht alle Service Worker und setzt die Push-Verbindung zurück. Fortfahren?')) return;
         if (!navigator.serviceWorker) {
@@ -545,12 +566,25 @@ const Setup = ({ onLogout }) => {
                 console.log('TogglePush: Mode = DEACTIVATE');
                 const subscription = await registration.pushManager.getSubscription();
                 console.log('TogglePush: Existing subscription to unsubscribe:', !!subscription);
+
                 if (subscription) {
+                    // Tell backend to remove this endpoint
+                    const token = localStorage.getItem('token');
+                    await fetch('/api/notifications/unsubscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ endpoint: subscription.endpoint })
+                    }).catch(err => console.error('Unsubscribe backend failed:', err));
+
                     await subscription.unsubscribe();
                     console.log('TogglePush: Unsubscribed browser.');
                 }
+
                 setPushEnabled(false);
-                setStatusMessage({ text: 'Push deaktiviert.', type: 'success' });
+                setStatusMessage({ text: 'Push deaktiviert & vom Server entfernt.', type: 'success' });
                 return;
             }
 
@@ -717,12 +751,18 @@ const Setup = ({ onLogout }) => {
                         </div>
 
                         {pushEnabled && (
-                            <div className="px-4 pb-4">
+                            <div className="px-4 pb-4 flex flex-col space-y-2">
                                 <button
                                     onClick={handleRemoteTestPush}
                                     className="w-full py-2 bg-gray-50 text-[#1b3a2e] text-[10px] font-black uppercase tracking-widest rounded-xl border border-gray-100 hover:bg-gray-100 transition-all"
                                 >
                                     Test PWA Push senden
+                                </button>
+                                <button
+                                    onClick={handleClearPushSubscriptions}
+                                    className="w-full py-2 text-gray-400 hover:text-red-500 text-[9px] font-bold uppercase tracking-wider transition-all"
+                                >
+                                    Alle gespeicherten Endpunkte zurücksetzen
                                 </button>
                             </div>
                         )}
