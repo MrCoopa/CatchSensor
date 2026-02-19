@@ -38,8 +38,7 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                 setError(data.message || 'Registrierung fehlgeschlagen');
             }
         } catch (err) {
-            setError(`Verbindung fehlgeschlagen zu: ${API_BASE || 'ROOT'}`);
-            console.error('Registration connection error:', err);
+            setError('Verbindung zum Server fehlgeschlagen');
         }
     };
 
