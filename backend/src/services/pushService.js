@@ -7,19 +7,20 @@ const fs = require('fs');
 const serviceAccountPath = path.join(__dirname, '../../serviceAccountKey.json');
 let firebaseInitialized = false;
 
-if (fs.existsSync(serviceAccountPath)) {
-    try {
+try {
+    // Check if the file exists AND is actually a file (Docker can create empty dirs for missing volumes)
+    if (fs.existsSync(serviceAccountPath) && fs.lstatSync(serviceAccountPath).isFile()) {
         const serviceAccount = require(serviceAccountPath);
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
         console.log('Push Service: Firebase Admin SDK initialized successfully. ✅');
         firebaseInitialized = true;
-    } catch (error) {
-        console.error('Push Service: Error initializing Firebase Admin SDK:', error);
+    } else {
+        console.warn('Push Service: ⚠️ serviceAccountKey.json not found in backend root. Native Push (FCM) will not work.');
     }
-} else {
-    console.warn('Push Service: ⚠️ serviceAccountKey.json not found in backend root. Native Push (FCM) will not work.');
+} catch (error) {
+    console.error('Push Service: ❌ Error initializing Firebase Admin SDK:', error.message);
 }
 
 const webpush = require('web-push');

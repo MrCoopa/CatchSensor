@@ -10,6 +10,8 @@ services:
     ports:
       - "5000:5000"
       - "1884:1884"
+    env_file:
+      - .env
     environment:
       - PORT=5000
       - DB_HOST=catchsensor_db
@@ -17,10 +19,6 @@ services:
       - DB_PASS=root
       - DB_NAME=catchsensor
       - NODE_ENV=production
-      - JWT_SECRET=please_change_this_for_production
-      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
-      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:5000/}
     depends_on:
       catchsensor_db:
         condition: service_healthy
