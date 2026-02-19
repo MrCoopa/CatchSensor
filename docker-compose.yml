@@ -15,8 +15,11 @@ services:
       - DB_NAME=catchsensor
       - NODE_ENV=production
       - JWT_SECRET=please_change_this_for_production
+    env_file:
+      - .env
     depends_on:
-      - catchsensor_db
+      catchsensor_db:
+        condition: service_healthy
     restart: always
 
   catchsensor_db:
@@ -29,6 +32,11 @@ services:
       - "3306:3306"
     volumes:
       - catchsensor_db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
 
 volumes:
