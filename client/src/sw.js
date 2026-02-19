@@ -31,10 +31,14 @@ precacheAndRoute(self.__WB_MANIFEST || [])
 
 // Mandatory Fetch Handler for PWA Installability
 self.addEventListener('fetch', (event) => {
-    // We let Workbox handle the caching via precacheAndRoute,
-    // but the presence of this listener is a requirement for the "Install" prompt.
+    // Workbox usually handles this via precacheAndRoute, 
+    // but an explicit listener helps with some browser-side installation detection.
     if (event.request.mode === 'navigate') {
-        // Optional: Could add custom offline logic here
+        event.respondWith(
+            fetch(event.request).catch(() => {
+                return caches.match(event.request);
+            })
+        );
     }
 });
 

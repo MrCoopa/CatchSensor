@@ -1433,16 +1433,52 @@ const Setup = ({ onLogout }) => {
                                     </div>
                                 )}
 
+                                <div className="p-4 border-t border-gray-50 bg-gray-50/50">
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">PWA Diagnose (Android)</h4>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Verschlüsselt (HTTPS/Secure):</span>
+                                            <span className={`text-[10px] font-black ${isSecure ? 'text-green-600' : 'text-red-500'}`}>
+                                                {isSecure ? 'JA ✅' : 'NEIN ⚠️'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Service Worker Status:</span>
+                                            <span className={`text-[10px] font-black ${swStatus.includes('✅') ? 'text-green-600' : 'text-amber-500'}`}>
+                                                {swStatus.split(' ')[0]}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Manifest erkannt:</span>
+                                            <span className={`text-[10px] font-black ${document.querySelector('link[rel="manifest"]') ? 'text-green-600' : 'text-red-500'}`}>
+                                                {document.querySelector('link[rel="manifest"]') ? 'JA ✅' : 'NEIN ❌'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Installations-Prompt bereit:</span>
+                                            <span className={`text-[10px] font-black ${isInstallable ? 'text-green-600' : 'text-gray-400'}`}>
+                                                {isInstallable ? 'BEREIT ✅' : 'WARTET...'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {!isInstallable && (
+                                        <p className="text-[9px] text-gray-400 mt-3 leading-tight italic">
+                                            Tipp: Wenn HTTPS fehlt, Chrome-Flag <b>#unsafely-treat-insecure-origin-as-secure</b> nutzen.
+                                        </p>
+                                    )}
+                                </div>
+
                                 {!isSecure && (
                                     <div className="p-4 border-t border-gray-50 bg-red-50">
                                         <div className="flex items-start space-x-3">
                                             <Info size={16} className="text-red-500 mt-0.5 shrink-0" />
                                             <div>
-                                                <p className="text-[11px] font-bold text-red-900 uppercase tracking-tight">Unsichere Verbindung (HTTP)</p>
+                                                <p className="text-[11px] font-bold text-red-900 uppercase tracking-tight">Security Check Failed</p>
                                                 <p className="text-[10px] text-red-700 leading-relaxed mt-1">
-                                                    PWA-Vollinstallation ist nur über <b>HTTPS</b> oder <b>localhost</b> möglich.
-                                                    Auf Android müssen Sie die <b>#unsafely-treat-insecure-origin-as-secure</b> Flag für
-                                                    <code>{window.location.host}</code> in Chrome aktivieren.
+                                                    Chrome blockiert die Installation auf <code>http://</code>.
+                                                    Aktiviere in Chrome: <b>chrome://flags</b> → <b>"Insecure origins treated as secure"</b> →
+                                                    Trage <code>{window.location.origin}</code> ein.
                                                 </p>
                                             </div>
                                         </div>
