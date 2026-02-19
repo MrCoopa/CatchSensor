@@ -3,7 +3,10 @@ version: '3.8'
 services:
   app:
     container_name: catchsensor_app
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000}
     ports:
       - "5000:5000"
       - "1884:1884"
@@ -17,6 +20,7 @@ services:
       - JWT_SECRET=please_change_this_for_production
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:5000/}
     depends_on:
       catchsensor_db:
         condition: service_healthy

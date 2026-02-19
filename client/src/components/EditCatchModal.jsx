@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import API_BASE from '../apiConfig';
 
 const EditCatchModal = ({ isOpen, onClose, onEdit, catchSensor }) => {
     const [formData, setFormData] = useState({
@@ -28,7 +29,7 @@ const EditCatchModal = ({ isOpen, onClose, onEdit, catchSensor }) => {
         setError('');
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`/api/catches/${catchSensor.id}`, {
+            const response = await fetch(`${API_BASE}/api/catches/${catchSensor.id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

@@ -13,8 +13,8 @@ const PushSubscription = sequelize.define('PushSubscription', {
         unique: true
     },
     keys: {
-        type: DataTypes.JSON, // Stores p256dh and auth
-        allowNull: false
+        type: DataTypes.JSON, // Stores p256dh and auth (Null for Native Push)
+        allowNull: true
     },
     userId: {
         type: DataTypes.UUID,

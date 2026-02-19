@@ -5,20 +5,25 @@ import './index.css'
 import App from './App.jsx'
 
 // Auto-update SW
-const updateSW = registerSW({
-  onNeedRefresh() {
-    if (confirm('Neue Version verfügbar. Neu laden?')) {
-      updateSW(true)
-    }
-  },
-  onOfflineReady() {
-    console.log('App ist bereit für Offline-Nutzung.')
-  },
-  onRegisterError(error) {
-    console.error('SW Error:', error);
-    window.swError = error;
-  }
-})
+import { Capacitor } from '@capacitor/core';
+
+// Only register Service Worker for Web (if needed for caching), but NOT for Native App
+// User requested to focus on Native App stability
+if (!Capacitor.isNativePlatform()) {
+  const updateSW = registerSW({
+    onNeedRefresh() {
+      if (confirm('Neue Version verfügbar. Neu laden?')) {
+        updateSW(true)
+      }
+    },
+    onOfflineReady() {
+      console.log('App ready to work offline')
+    },
+    onRegisterError(error) {
+      console.error('SW registration error', error)
+    },
+  })
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

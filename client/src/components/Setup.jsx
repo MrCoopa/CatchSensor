@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { User, Shield, Info, Trash2, LogOut, ChevronRight, Settings, X, Edit2 } from 'lucide-react';
 import EditCatchModal from './EditCatchModal';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
+import API_BASE from '../apiConfig';
 
 const Setup = ({ onLogout }) => {
     const [catches, setCatches] = useState([]);
@@ -41,7 +44,7 @@ const Setup = ({ onLogout }) => {
     const testConnection = async () => {
         setStatusMessage({ text: 'Teste Verbindung...', type: '' });
         try {
-            const response = await fetch('/api/status');
+            const response = await fetch(`${API_BASE}/api/status`);
             if (response.ok) {
                 setStatusMessage({ text: 'Verbindung zum Server erfolgreich! ✅', type: 'success' });
             } else {
@@ -56,7 +59,7 @@ const Setup = ({ onLogout }) => {
         setStatusMessage({ text: 'Sende Test-Push über Server...', type: '' });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/notifications/test', {
+            const res = await fetch(`${API_BASE}/api/notifications/test`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -81,6 +84,11 @@ const Setup = ({ onLogout }) => {
 
     useEffect(() => {
         const checkSW = async () => {
+            if (Capacitor.isNativePlatform()) {
+                setSwStatus('Native App (Capacitor) 📱');
+                return;
+            }
+
             if ('Notification' in window) {
                 setNotifPermission(Notification.permission);
             }
@@ -136,8 +144,28 @@ const Setup = ({ onLogout }) => {
             }
         };
 
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
             navigator.serviceWorker.addEventListener('message', handleSWMessage);
+        }
+
+        // Native Push Listeners
+        if (Capacitor.isNativePlatform()) {
+            PushNotifications.addListener('registration', (token) => {
+                console.log('Push registration success, token: ' + token.value);
+                setStatusMessage({ text: 'Native Push registriert! ✅', type: 'success' });
+                // Send to backend
+                registerNativePush(token.value);
+            });
+
+            PushNotifications.addListener('registrationError', (error) => {
+                console.error('Push registration error: ' + JSON.stringify(error));
+                setStatusMessage({ text: 'Fehler bei Push-Registrierung: ' + error.error, type: 'error' });
+            });
+
+            PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                console.log('Push received: ' + JSON.stringify(notification));
+                setStatusMessage({ text: `🔔 Alarm: ${notification.title}`, type: 'success' });
+            });
         }
 
         return () => {
@@ -146,6 +174,9 @@ const Setup = ({ onLogout }) => {
             window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+            }
+            if (Capacitor.isNativePlatform()) {
+                PushNotifications.removeAllListeners();
             }
         };
     }, []);
@@ -227,6 +258,23 @@ const Setup = ({ onLogout }) => {
 
 
     const handleRequestPermission = async () => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const result = await PushNotifications.requestPermissions();
+                setNotifPermission(result.receive);
+                if (result.receive === 'granted') {
+                    PushNotifications.register();
+                    setStatusMessage({ text: 'Native Push-Berechtigung erteilt! 🚀', type: 'success' });
+                } else {
+                    setStatusMessage({ text: 'Native Push-Berechtigung abgelehnt.', type: 'error' });
+                }
+            } catch (e) {
+                console.error('Permission request failed', e);
+                setStatusMessage({ text: 'Fehler bei Berechtigungsanfrage: ' + e.message, type: 'error' });
+            }
+            return;
+        }
+
         if (!('Notification' in window)) {
             setStatusMessage({ text: 'Browser unterstützt keine Benachrichtigungen.', type: 'error' });
             return;
@@ -250,7 +298,7 @@ const Setup = ({ onLogout }) => {
         setStatusMessage({ text: 'Lösche Abos...', type: '' });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/notifications/clear-all', {
+            const res = await fetch(`${API_BASE}/api/notifications/clear-all`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -291,8 +339,8 @@ const Setup = ({ onLogout }) => {
             const token = localStorage.getItem('token');
             // Parallel fetch for user profile and catches list
             const [userRes, catchesRes] = await Promise.all([
-                fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/catches', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${API_BASE}/api/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_BASE}/api/catches`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             if (userRes.status === 401 || catchesRes.status === 401) {
@@ -331,7 +379,7 @@ const Setup = ({ onLogout }) => {
         setStatusMessage({ text: '', type: '' });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/auth/update-profile', {
+            const res = await fetch(`${API_BASE}/api/auth/update-profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -389,7 +437,7 @@ const Setup = ({ onLogout }) => {
         if (window.confirm(confirmMsg)) {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`/api/catches/${id}`, {
+                const response = await fetch(`${API_BASE}/api/catches/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -413,7 +461,7 @@ const Setup = ({ onLogout }) => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/catches/${selectedCatch.id}/share`, {
+            const response = await fetch(`${API_BASE}/api/catches/${selectedCatch.id}/share`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -441,7 +489,7 @@ const Setup = ({ onLogout }) => {
         if (!confirm('Zugriff für diesen Nutzer wirklich entfernen?')) return;
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/catches/${selectedCatch.id}/share/${userId}`, {
+            const response = await fetch(`${API_BASE}/api/catches/${selectedCatch.id}/share/${userId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -460,7 +508,7 @@ const Setup = ({ onLogout }) => {
         setLoadingShares(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/catches/${catchSensorId}/shares`, {
+            const response = await fetch(`${API_BASE}/api/catches/${catchSensorId}/shares`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -504,7 +552,7 @@ const Setup = ({ onLogout }) => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/auth/change-password', {
+            const response = await fetch(`${API_BASE}/api/auth/change-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -568,8 +616,61 @@ const Setup = ({ onLogout }) => {
         }
     };
 
+
+
+    const registerNativePush = async (fcmToken) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/api/notifications/subscribe`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    endpoint: fcmToken,
+                    // keys are null for native push
+                    keys: null
+                })
+            });
+
+            if (res.ok) {
+                console.log('Native Push registered with backend!');
+                setPushEnabled(true);
+            } else {
+                console.error('Backend refused native push token', res.status);
+            }
+        } catch (e) {
+            console.error('Error sending native token to backend', e);
+        }
+    };
+
     const togglePush = async () => {
         console.log('--- TogglePush: START ---');
+
+        // NATIVE FLOW
+        if (Capacitor.isNativePlatform()) {
+            if (pushEnabled) {
+                // Unregister logic not fully supported by Capacitor plugin directly for "unregister", usually just backend removal
+                // But we can just tell backend to delete token
+                // For now, simple toggle state
+                setPushEnabled(false);
+                setStatusMessage({ text: 'Push deaktiviert (nur lokal Status).', type: '' });
+                return;
+            }
+
+            setStatusMessage({ text: 'Fordere Native Push an...', type: '' });
+            const permDetails = await PushNotifications.requestPermissions();
+            if (permDetails.receive === 'granted') {
+                PushNotifications.register();
+                // The 'registration' listener will handle the backend call
+            } else {
+                setStatusMessage({ text: 'Push-Berechtigung abgelehnt.', type: 'error' });
+            }
+            return;
+        }
+
+        // WEB FLOW
         if (!('serviceWorker' in navigator)) {
             console.error('TogglePush: No ServiceWorker support');
             setStatusMessage({ text: 'Service Worker nicht vom Browser unterstützt.', type: 'error' });
@@ -635,7 +736,7 @@ const Setup = ({ onLogout }) => {
                 if (subscription) {
                     // Tell backend to remove this endpoint
                     const token = localStorage.getItem('token');
-                    await fetch('/api/notifications/unsubscribe', {
+                    await fetch(`${API_BASE}/api/notifications/unsubscribe`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -666,7 +767,7 @@ const Setup = ({ onLogout }) => {
             const token = localStorage.getItem('token');
             console.log('TogglePush: Sending to backend /api/notifications/subscribe...');
 
-            const res = await fetch('/api/notifications/subscribe', {
+            const res = await fetch(`${API_BASE}/api/notifications/subscribe`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -683,7 +784,7 @@ const Setup = ({ onLogout }) => {
                 setStatusMessage({ text: 'Push aktiviert! Teste...', type: 'success' });
 
                 // Optional: Instant test
-                await fetch('/api/notifications/test', {
+                await fetch(`${API_BASE}/api/notifications/test`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 }).catch(e => console.error('TogglePush: Initial test failed', e));
@@ -800,23 +901,25 @@ const Setup = ({ onLogout }) => {
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Benachrichtigungen</label>
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
-                        {/* web push toggle */}
-                        <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
-                            <div className="flex items-center space-x-4">
-                                <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                                    <Shield size={20} />
+                        {/* web push toggle - Hide on Native because it uses ServiceWorker logic. Native permission is managed in System Settings. */
+                            !Capacitor.isNativePlatform() && (
+                                <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
+                                    <div className="flex items-center space-x-4">
+                                        <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                            <Shield size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
+                                        </div>
+                                    </div>
+                                    <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
+                                        <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
-                                </div>
-                            </div>
-                            <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
-                                <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </div>
-                        </div>
+                            )}
 
-                        {pushEnabled && (
+                        {pushEnabled && !Capacitor.isNativePlatform() && (
                             <div className="px-4 pb-4 flex flex-col space-y-2">
                                 <button
                                     onClick={handleRemoteTestPush}
@@ -1186,37 +1289,10 @@ const Setup = ({ onLogout }) => {
                     )
                 }
 
-                {/* App Installation Section */}
-                <section>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Installation</label>
-                    <div className="bg-gradient-to-br from-[#1b3a2e] to-[#2a5a48] rounded-3xl shadow-lg p-6 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-
-                        <div className="relative z-10">
-                            <h3 className="text-lg font-bold mb-2">Als App nutzen</h3>
-                            <p className="text-sm text-gray-200 mb-4 leading-relaxed">
-                                Für das beste Erlebnis ohne Browser-Leiste:
-                            </p>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/10">
-                                    <div className="font-bold text-xs uppercase tracking-widest text-green-300 mb-1">iOS (iPhone)</div>
-                                    <p className="text-xs space-y-1">
-                                        <span className="block">1. Tippen Sie auf <span className="font-bold">Teilen</span> (Viereck mit Pfeil)</span>
-                                        <span className="block">2. Wählen Sie <span className="font-bold">"Zum Home-Bildschirm"</span></span>
-                                    </p>
-                                </div>
-                                <div className="bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/10">
-                                    <div className="font-bold text-xs uppercase tracking-widest text-green-300 mb-1">Android</div>
-                                    <p className="text-xs space-y-1">
-                                        <span className="block">1. Tippen Sie auf <span className="font-bold">⋮ (Menü)</span></span>
-                                        <span className="block">2. Wählen Sie <span className="font-bold">"App installieren"</span></span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                {/* App Installation Section - Only show if PWA installable AND not native (but user wants to hide it mostly) */}
+                {/* User requested no PWA features on web, so we hide installation prompt entirety or only show on mobile web if needed. 
+                    For now, we hide it completely to focus on Native App stability as requested. */
+                }
 
                 {/* Status Message Container */}
                 {
@@ -1270,27 +1346,29 @@ const Setup = ({ onLogout }) => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="p-4 flex items-center justify-between border-t border-gray-50">
-                                    <div className="flex items-center space-x-4">
-                                        <div className={`p-2.5 rounded-2xl ${notifPermission === 'granted' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                            <Info size={20} />
+                                {Capacitor.isNativePlatform() && (
+                                    <div className="p-4 flex items-center justify-between border-t border-gray-50">
+                                        <div className="flex items-center space-x-4">
+                                            <div className={`p-2.5 rounded-2xl ${notifPermission === 'granted' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                                <Info size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">Berechtigung</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-tight">
+                                                    {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Ungeklärt'}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">Berechtigung</p>
-                                            <p className="text-[10px] font-bold uppercase tracking-tight">
-                                                {notifPermission === 'granted' ? '✅ Erteilt' : notifPermission === 'denied' ? '❌ Blockiert' : '❓ Ungeklärt'}
-                                            </p>
-                                        </div>
+                                        {notifPermission !== 'granted' && (
+                                            <button
+                                                onClick={handleRequestPermission}
+                                                className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100 active:scale-95 transition-all"
+                                            >
+                                                Anfordern
+                                            </button>
+                                        )}
                                     </div>
-                                    {notifPermission !== 'granted' && (
-                                        <button
-                                            onClick={handleRequestPermission}
-                                            className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100 active:scale-95 transition-all"
-                                        >
-                                            Anfordern
-                                        </button>
-                                    )}
-                                </div>
+                                )}
                                 <div className="p-4 flex flex-col space-y-2 border-t border-gray-50 bg-amber-50/20">
                                     <div className="flex justify-between items-center">
                                         <span className="text-[10px] font-black text-amber-800 uppercase italic">Debug-Kontext:</span>
@@ -1367,53 +1445,57 @@ const Setup = ({ onLogout }) => {
                                     </div>
                                     <ChevronRight size={18} className="text-gray-300" />
                                 </div>
-                                <div
-                                    onClick={handleLocalTest}
-                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-amber-50 group transition-colors cursor-pointer"
-                                >
-                                    <div className="flex items-center space-x-4">
-                                        <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600 group-hover:bg-amber-100">
-                                            <Shield size={20} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">SW Test-Notiz</p>
-                                            <p className="text-[10px] text-gray-400 font-medium">Testet via Service Worker</p>
-                                        </div>
+                                {!Capacitor.isNativePlatform() && (
+                                    <>
+                                        <div
+                                            onClick={handleLocalTest}
+                                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-amber-50 group transition-colors cursor-pointer"
+                                        >
+                                            <div className="flex items-center space-x-4">
+                                                <div className="bg-amber-50 p-2.5 rounded-2xl text-amber-600 group-hover:bg-amber-100">
+                                                    <Shield size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">SW Test-Notiz</p>
+                                                    <p className="text-[10px] text-gray-400 font-medium">Testet via Service Worker</p>
+                                                </div>
 
-                                    </div>
-                                    <ChevronRight size={18} className="text-gray-300" />
-                                </div>
-                                <div
-                                    onClick={handleMainThreadTest}
-                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-purple-50 group transition-colors cursor-pointer"
-                                >
-                                    <div className="flex items-center space-x-4">
-                                        <div className="bg-purple-50 p-2.5 rounded-2xl text-purple-600 group-hover:bg-purple-100">
-                                            <Shield size={20} />
+                                            </div>
+                                            <ChevronRight size={18} className="text-gray-300" />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">Direct Test-Notiz</p>
-                                            <p className="text-[10px] text-gray-400 font-medium">Testet via System-Interface</p>
-                                        </div>
+                                        <div
+                                            onClick={handleMainThreadTest}
+                                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-purple-50 group transition-colors cursor-pointer"
+                                        >
+                                            <div className="flex items-center space-x-4">
+                                                <div className="bg-purple-50 p-2.5 rounded-2xl text-purple-600 group-hover:bg-purple-100">
+                                                    <Shield size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Direct Test-Notiz</p>
+                                                    <p className="text-[10px] text-gray-400 font-medium">Testet via System-Interface</p>
+                                                </div>
 
-                                    </div>
-                                    <ChevronRight size={18} className="text-gray-300" />
-                                </div>
-                                <div
-                                    onClick={handleManualRegister}
-                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-green-50 group transition-colors cursor-pointer"
-                                >
-                                    <div className="flex items-center space-x-4">
-                                        <div className="bg-green-50 p-2.5 rounded-2xl text-green-600 group-hover:bg-green-100">
-                                            <Settings size={20} />
+                                            </div>
+                                            <ChevronRight size={18} className="text-gray-300" />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">SW manuell starten</p>
-                                            <p className="text-[10px] text-gray-400 font-medium">Erzwingt Registrierung (Mobile Fix)</p>
+                                        <div
+                                            onClick={handleManualRegister}
+                                            className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-green-50 group transition-colors cursor-pointer"
+                                        >
+                                            <div className="flex items-center space-x-4">
+                                                <div className="bg-green-50 p-2.5 rounded-2xl text-green-600 group-hover:bg-green-100">
+                                                    <Settings size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">SW manuell starten</p>
+                                                    <p className="text-[10px] text-gray-400 font-medium">Erzwingt Registrierung (Mobile Fix)</p>
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={18} className="text-gray-300" />
                                         </div>
-                                    </div>
-                                    <ChevronRight size={18} className="text-gray-300" />
-                                </div>
+                                    </>
+                                )}
 
                                 {isInstallable && (
                                     <div
@@ -1433,43 +1515,45 @@ const Setup = ({ onLogout }) => {
                                     </div>
                                 )}
 
-                                <div className="p-4 border-t border-gray-50 bg-gray-50/50">
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">PWA Diagnose (Android)</h4>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Verschlüsselt (HTTPS/Secure):</span>
-                                            <span className={`text-[10px] font-black ${isSecure ? 'text-green-600' : 'text-red-500'}`}>
-                                                {isSecure ? 'JA ✅' : 'NEIN ⚠️'}
-                                            </span>
+                                {!Capacitor.isNativePlatform() && (
+                                    <div className="p-4 border-t border-gray-50 bg-gray-50/50">
+                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">PWA Diagnose</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Verschlüsselt (HTTPS/Secure):</span>
+                                                <span className={`text-[10px] font-black ${isSecure ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {isSecure ? 'JA ✅' : 'NEIN ⚠️'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Service Worker Status:</span>
+                                                <span className={`text-[10px] font-black ${swStatus.includes('✅') ? 'text-green-600' : 'text-amber-500'}`}>
+                                                    {swStatus.split(' ')[0]}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Manifest erkannt:</span>
+                                                <span className={`text-[10px] font-black ${document.querySelector('link[rel="manifest"]') ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {document.querySelector('link[rel="manifest"]') ? 'JA ✅' : 'NEIN ❌'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-gray-500 font-medium tracking-tight">Installations-Prompt bereit:</span>
+                                                <span className={`text-[10px] font-black ${isInstallable ? 'text-green-600' : 'text-gray-400'}`}>
+                                                    {isInstallable ? 'BEREIT ✅' : 'WARTET...'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Service Worker Status:</span>
-                                            <span className={`text-[10px] font-black ${swStatus.includes('✅') ? 'text-green-600' : 'text-amber-500'}`}>
-                                                {swStatus.split(' ')[0]}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Manifest erkannt:</span>
-                                            <span className={`text-[10px] font-black ${document.querySelector('link[rel="manifest"]') ? 'text-green-600' : 'text-red-500'}`}>
-                                                {document.querySelector('link[rel="manifest"]') ? 'JA ✅' : 'NEIN ❌'}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] text-gray-500 font-medium tracking-tight">Installations-Prompt bereit:</span>
-                                            <span className={`text-[10px] font-black ${isInstallable ? 'text-green-600' : 'text-gray-400'}`}>
-                                                {isInstallable ? 'BEREIT ✅' : 'WARTET...'}
-                                            </span>
-                                        </div>
+
+                                        {!isInstallable && (
+                                            <p className="text-[9px] text-gray-400 mt-3 leading-tight italic">
+                                                Tipp: Wenn HTTPS fehlt, Chrome-Flag <b>#unsafely-treat-insecure-origin-as-secure</b> nutzen.
+                                            </p>
+                                        )}
                                     </div>
+                                )}
 
-                                    {!isInstallable && (
-                                        <p className="text-[9px] text-gray-400 mt-3 leading-tight italic">
-                                            Tipp: Wenn HTTPS fehlt, Chrome-Flag <b>#unsafely-treat-insecure-origin-as-secure</b> nutzen.
-                                        </p>
-                                    )}
-                                </div>
-
-                                {!isSecure && (
+                                {!Capacitor.isNativePlatform() && !isSecure && (
                                     <div className="p-4 border-t border-gray-50 bg-red-50">
                                         <div className="flex items-start space-x-3">
                                             <Info size={16} className="text-red-500 mt-0.5 shrink-0" />
@@ -1484,21 +1568,23 @@ const Setup = ({ onLogout }) => {
                                         </div>
                                     </div>
                                 )}
-                                <div
-                                    onClick={handleForceCleanup}
-                                    className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-red-50 group transition-colors cursor-pointer"
-                                >
-                                    <div className="flex items-center space-x-4">
-                                        <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-100">
-                                            <Trash2 size={20} />
+                                {!Capacitor.isNativePlatform() && (
+                                    <div
+                                        onClick={handleForceCleanup}
+                                        className="p-4 flex items-center justify-between border-t border-gray-50 hover:bg-red-50 group transition-colors cursor-pointer"
+                                    >
+                                        <div className="flex items-center space-x-4">
+                                            <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-100">
+                                                <Trash2 size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">SW Fehler beheben</p>
+                                                <p className="text-[10px] text-gray-400 font-medium">Bereinigt & Repariert App-Cache</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">SW Fehler beheben</p>
-                                            <p className="text-[10px] text-gray-400 font-medium">Bereinigt & Repariert App-Cache</p>
-                                        </div>
+                                        <ChevronRight size={18} className="text-gray-300" />
                                     </div>
-                                    <ChevronRight size={18} className="text-gray-300" />
-                                </div>
+                                )}
                             </div>
                         )}
                     </div>
