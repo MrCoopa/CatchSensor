@@ -84,13 +84,26 @@ if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
     };
     console.log('MQTT Broker: 🔒 Authentication enabled for embedded broker.');
 } else {
-    console.log('MQTT Broker: ⚠️ No authentication set for embedded broker (NBIOT_MQTT_USER/PASS not set).');
+    console.log('MQTT Broker: ⚠️ No authentication set for embedded broker (INTERNAL_MQTT_USER/PASS not set).');
 }
 
-// Aedes event logging (Commented out for production)
-// aedes.on('client', (client) => {
-//     console.log(`MQTT Broker: New Client detected: ${client ? client.id : 'unknown'}`);
-// });
+// Aedes event logging
+aedes.on('client', (client) => {
+    console.log(`MQTT Broker: 🟢 New Client connected: ${client ? client.id : 'unknown'}`);
+});
+
+aedes.on('clientDisconnect', (client) => {
+    console.log(`MQTT Broker: 🔴 Client disconnected: ${client ? client.id : 'unknown'}`);
+});
+
+aedes.on('clientError', (client, err) => {
+    console.log(`MQTT Broker: ⚠️ Client Error: ${client ? client.id : 'unknown'} - ${err.message}`);
+});
+
+aedes.on('connectionError', (client, err) => {
+    console.log(`MQTT Broker: ❌ Connection Error: ${err.message}`);
+});
+
 // aedes.on('subscribe', (subs, client) => {
 //     console.log(`MQTT Broker: Client ${client ? client.id : 'unknown'} subscribed to ${subs.map(s => s.topic).join(', ')}`);
 // });
