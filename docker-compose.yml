@@ -54,4 +54,4 @@ volumes:
 networks:
   npm_shared:
     external: true
-    name: npm_network # ⚠️ Run "docker network ls" to confirm your NPM network name
+    name: nginx-proxy-manager_default
