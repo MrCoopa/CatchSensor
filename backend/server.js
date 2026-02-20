@@ -113,27 +113,7 @@ aedes.on('publish', (packet, client) => {
     if (client) console.log(`MQTT Broker: 📤 Packet from ${client.id} on topic: ${packet.topic}`);
 });
 
-aedes.preConnect = (client, packet, done) => {
-    console.log(`MQTT Broker: ⏳ Pre-connect attempt...`);
-    done(null, true);
-};
-
-aedes.on('connackSent', (client) => {
-    console.log(`MQTT Broker: 📤 CONNACK sent to ${client ? client.id : 'unknown'}`);
-});
-
-aedes.on('keepaliveTimeout', (client) => {
-    console.log(`MQTT Broker: ⏳ Keep-alive timeout for ${client ? client.id : 'unknown'}`);
-});
-
-// aedes.on('subscribe', (subs, client) => {
-//     console.log(`MQTT Broker: Client ${client ? client.id : 'unknown'} subscribed to ${subs.map(s => s.topic).join(', ')}`);
-// });
-// aedes.on('publish', (packet, client) => {
-//     if (client) console.log(`MQTT Broker: Client ${client.id} published on ${packet.topic}`);
-// });
-
-const setupEmbeddedBroker = () => {
+const setupEmbeddedBroker = (io) => {
     // 1. Raw TCP MQTT Server (Port 1884)
     const mqttServer = aedesServerFactory.createServer(aedes);
     mqttServer.on('error', (err) => console.error('MQTT Server Error:', err));
@@ -142,27 +122,18 @@ const setupEmbeddedBroker = () => {
     });
 
     // 2. WebSocket MQTT Server (Port 1885)
-    // This is easier to proxy via Nginx Proxy Manager (NPM)
     const wsServer = aedesServerFactory.createServer(aedes, { ws: true });
     wsServer.on('error', (err) => console.error('MQTT WS Server Error:', err));
     wsServer.listen(1885, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (WS) running on 0.0.0.0:1885');
     });
 
+    // Initialize the shared Service logic with the broker instance
+    const { setupMQTT } = require('./src/services/mqttService');
+    setupMQTT(io, aedes);
+
     return aedes;
 };
-
-// Start Background Services
-console.log('--- Services Initialization ---');
-try {
-    const brokerInstance = setupEmbeddedBroker(); // Start Broker
-    setupMQTT(io, brokerInstance); // Pass aedes instance directly
-    console.log('Services: MQTT setup initiated with Direct Ingestion.');
-    setupWatchdog(io);
-    console.log('Services: Watchdog setup initiated.');
-} catch (err) {
-    console.error('CRITICAL: Service initialization failed:', err);
-}
 
 // 1. CORS Configuration (MOST IMPORTANT - MUST BE AT THE TOP)
 const allowedOrigins = [
@@ -479,6 +450,17 @@ async function startServer() {
             console.log(`VITE_API_URL: ${process.env.VITE_API_URL || 'Not Set'}`);
             console.log(`APP_BASE_URL: ${process.env.APP_BASE_URL || 'Not Set'}`);
             console.log('-----------------------');
+
+            // Start Background Services AFTER server is ready and DB is synced
+            console.log('--- Services Initialization ---');
+            try {
+                const brokerInstance = setupEmbeddedBroker(io);
+                console.log('Services: MQTT setup initiated with Direct Ingestion.');
+                setupWatchdog(io);
+                console.log('Services: Watchdog setup initiated.');
+            } catch (err) {
+                console.error('CRITICAL: Service initialization failed:', err);
+            }
         });
     } catch (error) {
         console.error('CRITICAL: Unable to sync database or start server:', error);
