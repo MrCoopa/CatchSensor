@@ -141,8 +141,12 @@ const connectToBroker = () => new Promise((resolve, reject) => {
 
     const timeout = setTimeout(() => {
         client.end();
-        reject(new Error(`Connection Timeout: Could not reach ${connectionUrl} within 15s.\n     Check if Port ${BROKER_PORT} is open in your Firewall/Docker.`));
-    }, 15000);
+        reject(new Error(`Connection Timeout: Could not reach ${connectionUrl} within 30s.\n     Server IP reached, but handshake stalled.`));
+    }, 30000);
+
+    client.on('packetreceive', (packet) => {
+        console.log(dim(`     [Packet In: ${packet.cmd}]`));
+    });
 
     client.on('connect', () => {
         clearTimeout(timeout);
