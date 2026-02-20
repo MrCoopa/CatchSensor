@@ -20,8 +20,21 @@ services:
       - NODE_ENV=production
       - JWT_SECRET=${JWT_SECRET}
       - VITE_API_URL=${VITE_API_URL}
-      - APP_BASE_URL=${APP_BASE_URL}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:5000}
       - FIREBASE_SERVICE_ACCOUNT_B64=${FIREBASE_SERVICE_ACCOUNT_B64}
+      # Internal MQTT Broker Auth
+      - INTERNAL_MQTT_USER=${INTERNAL_MQTT_USER}
+      - INTERNAL_MQTT_PASS=${INTERNAL_MQTT_PASS}
+      # LoRaWAN (TTN) MQTT
+      - TTN_MQTT_BROKER=${TTN_MQTT_BROKER:-eu1.cloud.thethings.network}
+      - TTN_MQTT_PORT=${TTN_MQTT_PORT:-1883}
+      - TTN_MQTT_USER=${TTN_MQTT_USER}
+      - TTN_MQTT_PASS=${TTN_MQTT_PASS}
+      - TTN_MQTT_TOPIC=${TTN_MQTT_TOPIC:-#}
+      # Additional Notification Config
+      - PUSHOVER_USER=${PUSHOVER_USER}
+      - PUSHOVER_TOKEN=${PUSHOVER_TOKEN}
+      - FCM_SERVER_KEY=${FCM_SERVER_KEY}
     depends_on:
       catchsensor_db:
         condition: service_healthy

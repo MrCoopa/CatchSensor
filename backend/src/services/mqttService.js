@@ -57,6 +57,8 @@ const setupMQTT = (io, aedes) => {
                 console.log(`MQTT: Ignored TTN Topic: ${topic}`);
             }
         });
+    } else {
+        console.log('MQTT: ℹ️ LoRaWAN (TTN) not configured (missing TTN_MQTT_USER).');
     }
 };
 
