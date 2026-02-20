@@ -135,8 +135,8 @@ const connectToBroker = () => new Promise((resolve, reject) => {
 
     const timeout = setTimeout(() => {
         client.end();
-        reject(new Error(`Connection Timeout: Could not reach ${connectionUrl}`));
-    }, 8000);
+        reject(new Error(`Connection Timeout: Could not reach ${connectionUrl} within 15s.\n     Check if Port ${BROKER_PORT} is open in your Firewall/Docker.`));
+    }, 15000);
 
     client.on('connect', () => {
         clearTimeout(timeout);
