@@ -42,6 +42,8 @@ const setupMQTT = (io, aedes) => {
         const ttnPort = process.env.TTN_MQTT_PORT || 1883;
         const protocol = ttnPort == 8883 ? 'mqtts' : 'mqtt';
 
+        console.log(`MQTT: 🔍 TTN Config Check - User: ${process.env.TTN_MQTT_USER?.substring(0, 5)}..., Pass-Length: ${process.env.TTN_MQTT_PASS?.length}, Port: ${ttnPort}, Proto: ${protocol}`);
+
         connectToBroker({
             name: 'LoRaWAN (TTN)',
             url: `${protocol}://${process.env.TTN_MQTT_BROKER || 'eu1.cloud.thethings.network'}`,
