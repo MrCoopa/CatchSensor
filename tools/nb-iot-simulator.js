@@ -148,6 +148,10 @@ const connectToBroker = () => new Promise((resolve, reject) => {
         clearTimeout(timeout);
         reject(new Error(`MQTT Error: ${err.message}`));
     });
+
+    client.on('close', () => console.log(dim('     Connection closed.')));
+    client.on('offline', () => console.log(dim('     Client went offline.')));
+    client.on('reconnect', () => console.log(dim('     Retrying...')));
 });
 
 // ── One-shot CLI mode ────────────────────────────────────────────────────────
