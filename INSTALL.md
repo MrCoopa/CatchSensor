@@ -44,7 +44,7 @@ DB_HOST=catchsensor_db            # Docker-Service Name der DB
 DB_NAME=catchsensor               # Name der Datenbank
 DB_USER=root                      # DB-Nutzer
 DB_PASS=root                      # DB-Passwort
-JWT_SECRET=dein_geheimer_key      # Zum Signieren von Logins
+JWT_SECRET=please_change_this_for_production # Dein JWT Schlüssel
 VITE_API_URL=https://catchsensor.home # URL für das Frontend-Build
 APP_BASE_URL=https://catchsensor.home # Basis-URL für Benachrichtigungen
 ```
@@ -52,27 +52,27 @@ APP_BASE_URL=https://catchsensor.home # Basis-URL für Benachrichtigungen
 ### Interner MQTT Broker (Aedes)
 Für NB-IoT Melder, die direkt mit dem Server kommunizieren.
 ```env
-INTERNAL_MQTT_USER=catch_admin    # Nutzername für Melder-Login
-INTERNAL_MQTT_PASS=geheim123      # Passwort für Melder-Login
+INTERNAL_MQTT_USER=alex           # Beispiel-Nutzer (bitte anpassen)
+INTERNAL_MQTT_PASS=geheim         # Beispiel-Passwort (bitte anpassen)
 ```
 
 ### LoRaWAN via The Things Network (TTN)
 ```env
 TTN_MQTT_BROKER=eu1.cloud.thethings.network
-TTN_MQTT_PORT=1883                # 1883 (Standard) oder 8883 (SSL)
-TTN_MQTT_USER=melder@ttn          # Dein TTN Application ID
-TTN_MQTT_PASS=NNSXS.XXX...        # Dein TTN API Key
-TTN_MQTT_TOPIC=#                  # Wildcard oder spezifisch v3/+/devices/+/up
+TTN_MQTT_PORT=8883                # 8883 (SSL/mqtts)
+TTN_MQTT_USER=melder@ttn          # Deine TTN Application ID
+TTN_MQTT_PASS=NNSXS.J3L2BGKV7VWZJVU6FODFP6K7VIJOL4GOMPOGAQJXI476LFGXAB34442WHL2UN65KDZ
+TTN_MQTT_TOPIC=/v3/melder@ttn/devices/+/up
 ```
 
 ### Benachrichtigungen (Native Push & Pushover)
 ```env
 # Firebase Cloud Messaging (Base64 des JSON-Keys — siehe Abschnitt 6)
-FIREBASE_SERVICE_ACCOUNT_B64=ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAg...
+FIREBASE_SERVICE_ACCOUNT_B64=... (hier den generierten Base64-Code einfügen)
 
 # Globales Pushover (Server-seitiger Zweitkanal)
-PUSHOVER_USER=your_user_key
-PUSHOVER_TOKEN=your_app_token
+PUSHOVER_USER=...
+PUSHOVER_TOKEN=...
 ```
 
 ### Externer NB-IoT Broker (Optional)
