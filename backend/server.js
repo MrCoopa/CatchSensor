@@ -61,9 +61,15 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Embedded MQTT Broker (Aedes)
-const { Aedes } = require('aedes');
-const aedes = new Aedes();
+const aedes = require('aedes')();
 const aedesServerFactory = require('aedes-server-factory');
+
+// MQTT Health Monitor
+setInterval(() => {
+    if (aedes) {
+        console.log(`MQTT Health: Connected Clients: ${aedes.connectedClients || 0}`);
+    }
+}, 30000);
 
 // Embedded Broker Authentication Logic
 const INTERNAL_MQTT_USER = process.env.INTERNAL_MQTT_USER;
