@@ -8,7 +8,7 @@ const PushSubscription = sequelize.define('PushSubscription', {
         autoIncrement: true
     },
     endpoint: {
-        type: DataTypes.TEXT, // Endpoints are FCM tokens for native
+        type: DataTypes.STRING(512), // FCM tokens fit in 512 chars; STRING allows clean UNIQUE index
         allowNull: false,
         unique: true
     },
