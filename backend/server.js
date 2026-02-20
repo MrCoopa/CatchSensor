@@ -113,6 +113,14 @@ aedes.on('publish', (packet, client) => {
     if (client) console.log(`MQTT Broker: 📤 Packet from ${client.id} on topic: ${packet.topic}`);
 });
 
+aedes.on('connackSent', (client) => {
+    console.log(`MQTT Broker: 📤 CONNACK sent to ${client ? client.id : 'unknown'}`);
+});
+
+aedes.on('ack', (packet, client) => {
+    console.log(`MQTT Broker: ✅ ACK for packet from ${client ? client.id : 'unknown'}`);
+});
+
 const setupEmbeddedBroker = (io) => {
     // 1. Raw TCP MQTT Server (Port 1884)
     const mqttServer = aedesServerFactory.createServer(aedes);
