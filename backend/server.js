@@ -66,57 +66,52 @@ const aedes = new Aedes();
 const aedesServerFactory = require('aedes-server-factory');
 
 // Embedded Broker Authentication Logic
-const INTERNAL_MQTT_USER = process.env.INTERNAL_MQTT_USER;
-const INTERNAL_MQTT_PASS = process.env.INTERNAL_MQTT_PASS;
-
-aedes.authenticate = function (client, username, password, callback) {
-    if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
-        const authorized = (username === INTERNAL_MQTT_USER && password?.toString() === INTERNAL_MQTT_PASS);
+// Simplified: No custom hooks to rule out handshake stalls.
+// Auth is handled by the default (allow all) or ENV if set.
+if (process.env.INTERNAL_MQTT_USER && process.env.INTERNAL_MQTT_PASS) {
+    aedes.authenticate = function (client, username, password, callback) {
+        const authorized = (username === process.env.INTERNAL_MQTT_USER && password?.toString() === process.env.INTERNAL_MQTT_PASS);
         if (authorized) {
-            console.log(`MQTT: Auth success for ${client.id}`);
+            console.log(`MQTT: ✅ Auth Success: ${client.id}`);
             callback(null, true);
         } else {
-            console.warn(`MQTT: Auth failed for ${client.id}`);
+            console.warn(`MQTT: ❌ Auth Failed: ${client.id}`);
             const error = new Error('Auth error');
             error.returnCode = 4;
             callback(error, null);
         }
-    } else {
-        // No auth required
-        console.log(`MQTT: Connection allowed (no auth) for ${client.id}`);
-        callback(null, true);
-    }
-};
+    };
+} else {
+    // Basic logging for the handshake start
+    aedes.on('client', (client) => {
+        if (client) console.log(`MQTT: 🟢 Client Attempt: ${client.id}`);
+    });
+}
 
-// Simplified event logging
-aedes.on('client', (client) => console.log(`MQTT: 🟢 Client Connected: ${client.id}`));
+// Exhaustive event logging for diagnostics
 aedes.on('clientReady', (client) => console.log(`MQTT: ✨ Client Ready: ${client.id}`));
 aedes.on('clientDisconnect', (client) => console.log(`MQTT: 🔴 Client Disconnected: ${client.id}`));
-aedes.on('clientError', (client, err) => console.log(`MQTT: ⚠️ Client Error (${client ? client.id : 'unknown'}): ${err.message}`));
-aedes.on('connectionError', (client, err) => console.log(`MQTT: ❌ Connection Error: ${err.message}`));
+aedes.on('clientError', (client, err) => {
+    console.warn(`MQTT: ⚠️ Client Error (${client ? client.id : 'unknown'}): ${err.message}`);
+    if (err.stack) console.debug(err.stack);
+});
+aedes.on('connectionError', (client, err) => {
+    console.error(`MQTT: ❌ Connection Error: ${err.message}`);
+    if (err.stack) console.debug(err.stack);
+});
 aedes.on('connackSent', (client) => console.log(`MQTT: 📤 CONNACK Sent: ${client ? client.id : 'unknown'}`));
-
-// Correct signature for Aedes 1.x preConnect (3 arguments)
-// We log the raw packet here to avoid interfering with the TCP stream
-aedes.preConnect = function (client, packet, callback) {
-    if (packet && packet.cmd === 'connect') {
-        console.log(`MQTT: ⏳ [1] Pre-connect from ${packet.clientId || 'unknown'}`);
-    }
-    callback(null, true);
-};
 
 const setupEmbeddedBroker = (io) => {
     // 1. Raw TCP MQTT Server (Port 1884)
-    const net = require('net');
-    const mqttServer = net.createServer(aedes.handle);
-    mqttServer.on('error', (err) => console.error('MQTT Server TCP Error:', err));
+    const mqttServer = aedesServerFactory.createServer(aedes);
+    mqttServer.on('error', (err) => console.error('MQTT TCP Server Error:', err));
     mqttServer.listen(1884, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
     });
 
     // 2. WebSocket MQTT Server (Port 1885)
     const wsServer = aedesServerFactory.createServer(aedes, { ws: true });
-    wsServer.on('error', (err) => console.error('MQTT Server WS Error:', err));
+    wsServer.on('error', (err) => console.error('MQTT WS Server Error:', err));
     wsServer.listen(1885, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (WS) running on 0.0.0.0:1885');
     });
