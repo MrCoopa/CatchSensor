@@ -108,8 +108,8 @@ aedes.on('publish', (packet, client) => {
     if (client) console.log(`MQTT Broker: 📤 Packet from ${client.id} on topic: ${packet.topic}`);
 });
 
-aedes.preConnect = (client, done) => {
-    console.log(`MQTT Broker: ⏳ Pre-connect from client: ${client.id}`);
+aedes.preConnect = (client, packet, done) => {
+    console.log(`MQTT Broker: ⏳ Pre-connect from client: ${client ? client.id : 'unknown'}`);
     done(null, true);
 };
 
