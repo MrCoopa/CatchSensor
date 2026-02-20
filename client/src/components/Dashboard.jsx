@@ -5,6 +5,9 @@ import AddCatchModal from './AddCatchModal';
 import API_BASE from '../apiConfig';
 import CatchDetailsModal from './CatchDetailsModal';
 import { ArrowLeft } from 'lucide-react';
+import { App } from '@capacitor/app';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { Capacitor } from '@capacitor/core';
 
 const Dashboard = ({ onLogout }) => {
     const [catches, setCatches] = useState([]);
@@ -78,12 +81,46 @@ const Dashboard = ({ onLogout }) => {
         const handleOpenModal = () => setIsAddModalOpen(true);
         window.addEventListener('open-add-catch-sensor', handleOpenModal);
 
+        // ── App State / Resume Listeners ─────────────────────────────────────────
+        // Trigger a refresh whenever the app returns to focus or is resumed
+
+        // 1. Web visibility change (works for PWA/Browser)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                console.log('Dashboard: App visible, refetching...');
+                fetchCatches();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // 2. Capacitor App State (Native Android/iOS)
+        let appStateListener = null;
+        if (Capacitor.isNativePlatform()) {
+            App.addListener('appStateChange', ({ isActive }) => {
+                if (isActive) {
+                    console.log('Dashboard: App resumed (Native), refetching...');
+                    fetchCatches();
+                }
+            }).then(l => appStateListener = l);
+
+            // 3. Notification Action (clicked a push)
+            PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+                console.log('Dashboard: Notification clicked, refetching...');
+                fetchCatches();
+            });
+        }
+
         return () => {
             console.log('Dashboard: Cleaning up socket & listeners');
             socket.off('connect_error');
             socket.off('catchSensorUpdate');
             socket.disconnect();
             window.removeEventListener('open-add-catch-sensor', handleOpenModal);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (appStateListener) appStateListener.remove();
+            if (Capacitor.isNativePlatform()) {
+                PushNotifications.removeAllListeners();
+            }
         };
     }, []);
 
