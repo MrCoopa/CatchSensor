@@ -126,7 +126,9 @@ const connectToBroker = () => new Promise((resolve, reject) => {
 
     const options = {
         username: BROKER_USER,
-        password: BROKER_PASS
+        password: BROKER_PASS,
+        protocolVersion: 4, // Force MQTT 3.1.1 for maximum compatibility with Aedes v1.0
+        connectTimeout: 10000
     };
 
     const client = mqtt.connect(connectionUrl, options);
