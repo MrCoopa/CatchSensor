@@ -23,11 +23,11 @@ A self-hosted IoT monitoring platform for trap/catch sensors using **NB-IoT** an
 ### Notifications
 - **Native Android Push** via Firebase Cloud Messaging (FCM) — using Capacitor
 - **Pushover** as optional secondary alert channel (configurable per user)
-- Configurable alert triggers:
-  - Catch detected
-  - Low battery (threshold configurable per user)
-  - Sensor offline (configurable interval)
-- Alert deduplication via cooldown intervals per sensor
+- Alert types and trigger timing:
+  - **Catch detected** — fires **immediately** when MQTT message arrives with `triggered` status
+  - **Low battery** — fires immediately on MQTT message if battery is below threshold; repeat suppression per user-configured interval
+  - **Sensor offline** — fired by the Watchdog when no message is received within the configured interval
+- Alert deduplication via per-sensor cooldown timestamps (`lastCatchAlert`, `lastBatteryAlert`, `lastOfflineAlert`)
 
 ### MQTT / Data Ingestion
 - Embedded [Aedes](https://github.com/moscajs/aedes) MQTT broker on port `1884`

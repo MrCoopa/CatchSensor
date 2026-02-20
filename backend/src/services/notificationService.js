@@ -76,7 +76,8 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
             notificationTitle = `WARNUNG: ${sensorName} ist Offline seit ${diffHours} Stunden`;
         } else if (type === 'TEST') {
             notificationTitle = '🧪 Test-Modus';
-            messageText = 'Testnachricht für PWA SW Push';
+            messageText = 'Test-Benachrichtigung erfolgreich empfangen.';
+
         }
 
         // 1. Native Push (FCM via Capacitor)
