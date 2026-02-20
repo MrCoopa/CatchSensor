@@ -126,12 +126,15 @@ const connectToBroker = () => new Promise((resolve, reject) => {
         connectionUrl = `${url}:${BROKER_PORT}`;
     }
 
+    const isSecure = connectionUrl.startsWith('wss://') || connectionUrl.startsWith('mqtts://');
     const options = {
         username: BROKER_USER,
         password: BROKER_PASS,
         protocolVersion: MQTT_VERSION,
         connectTimeout: 15000,
-        clientId: `catchsensor_sim_${Math.random().toString(16).slice(2, 8)}`
+        clientId: `catchsensor_sim_${Math.random().toString(16).slice(2, 8)}`,
+        // Allow self-signed certificates (e.g. from Nginx Proxy Manager on local network)
+        ...(isSecure && { rejectUnauthorized: false })
     };
 
     const client = mqtt.connect(connectionUrl, options);
