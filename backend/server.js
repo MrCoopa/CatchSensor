@@ -90,9 +90,8 @@ aedes.on('clientError', (client, err) => console.warn(`MQTT: ⚠️ Client Error
 aedes.on('connectionError', (client, err) => console.error(`MQTT: ❌ Connection Error: ${err.message}`));
 aedes.on('connackSent', (client) => console.log(`MQTT: 📤 CONNACK Sent: ${client.id}`));
 
-const setupEmbeddedBroker = (io, httpServer) => {
+const setupEmbeddedBroker = (io) => {
     const net = require('net');
-    const ws = require('ws');
 
     // TCP Server (Port 1884) — for direct NB-IoT / GSM connections
     const mqttServer = net.createServer(aedes.handle);
@@ -100,15 +99,12 @@ const setupEmbeddedBroker = (io, httpServer) => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
     });
 
-    // WebSocket Server — attached to the MAIN HTTP server (port 5000) on path /mqtt
-    // This allows NPM to proxy wss://mqtt.catchsensor.home → catchsensor_app:5000
-    // without needing a separate port that may be blocked by Docker networking.
-    const wsServer = new ws.Server({ server: httpServer, path: '/mqtt' });
-    wsServer.on('connection', (socket) => {
-        const stream = ws.createWebSocketStream(socket);
-        aedes.handle(stream);
+    // WebSocket Server (Port 1885) — for browser/NPM-proxied connections
+    const wsHttpServer = require('http').createServer();
+    require('websocket-stream').createServer({ server: wsHttpServer }, aedes.handle);
+    wsHttpServer.listen(1885, '0.0.0.0', () => {
+        console.log('✅ Embedded MQTT Broker (WS) running on 0.0.0.0:1885');
     });
-    wsServer.on('listening', () => console.log('✅ Embedded MQTT Broker (WS) on path /mqtt via port 5000'));
 
     // Load MQTT business logic
     const { setupMQTT } = require('./src/services/mqttService');
@@ -437,7 +433,7 @@ async function startServer() {
             console.log('--- Services Initialization ---');
             try {
                 console.log('MQTT: ✅ Internal NB-IoT Broker active (Aedes)');
-                const brokerInstance = setupEmbeddedBroker(io, server);
+                const brokerInstance = setupEmbeddedBroker(io);
                 console.log('Services: MQTT setup initiated with Direct Ingestion.');
                 setupWatchdog(io);
                 console.log('Services: Watchdog setup initiated.');
