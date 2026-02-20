@@ -239,6 +239,12 @@ const updateCatchSensorData = async (deviceId, data, io) => {
         // 1. Update Core Fields
         catchSensor.type = data.type;
 
+        // If a new trigger event arrives on a previously-active sensor, clear the acknowledgment
+        // so the user gets notified about the new catch event
+        if (data.status === 'triggered' && catchSensor.status !== 'triggered') {
+            catchSensor.alarmAcknowledgedAt = null;
+        }
+
         if (data.type === 'NB-IOT') {
             catchSensor.imei = deviceId;
             catchSensor.status = data.status || 'active';

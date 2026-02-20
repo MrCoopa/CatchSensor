@@ -1,6 +1,7 @@
-import { Battery, Signal, Users } from 'lucide-react';
+import { Battery, Signal, Users, CheckCheck } from 'lucide-react';
 import BatteryIndicator from './BatteryIndicator';
 import SignalIndicator from './SignalIndicator';
+import API_BASE from '../apiConfig';
 
 const formatTimeAgo = (date) => {
     const diff = Math.floor((new Date() - new Date(date)) / 1000 / 60);
@@ -10,11 +11,16 @@ const formatTimeAgo = (date) => {
     return 'Gestern';
 };
 
-const CatchCard = ({ catchSensor, onViewHistory, isShared }) => {
+const CatchCard = ({ catchSensor, onViewHistory, isShared, onAcknowledge }) => {
     const isLoRa = catchSensor.type === 'LORAWAN';
     const status = catchSensor.status;
     const voltage = catchSensor.batteryVoltage; // mV
     const lastUpdate = catchSensor.lastSeen;
+
+    // Is this alarm already acknowledged (no more repeat alerts)?
+    const isAcknowledged = catchSensor.alarmAcknowledgedAt &&
+        catchSensor.lastCatchAlert &&
+        new Date(catchSensor.alarmAcknowledgedAt) >= new Date(catchSensor.lastCatchAlert);
 
     const statusConfig = {
         active: {
@@ -42,6 +48,20 @@ const CatchCard = ({ catchSensor, onViewHistory, isShared }) => {
 
     const config = statusConfig[status] || statusConfig.active;
 
+    const handleAcknowledge = async (e) => {
+        e.stopPropagation(); // don't open history modal
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_BASE}/api/catches/${catchSensor.id}/acknowledge`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (onAcknowledge) onAcknowledge(catchSensor.id);
+        } catch (err) {
+            console.error('Acknowledge failed:', err);
+        }
+    };
+
     return (
         <div
             onClick={() => onViewHistory(catchSensor)}
@@ -66,9 +86,24 @@ const CatchCard = ({ catchSensor, onViewHistory, isShared }) => {
                 </p>
             )}
 
-            <div className={`text-sm font-black tracking-wider mb-4 ${config.text}`}>
+            <div className={`text-sm font-black tracking-wider mb-3 ${config.text}`}>
                 {config.label}
             </div>
+
+            {/* ALARM QUITTIEREN button — only for triggered sensors */}
+            {status === 'triggered' && (
+                <button
+                    onClick={handleAcknowledge}
+                    className={`mb-3 flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${isAcknowledged
+                            ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-default'
+                            : 'bg-red-600 text-white shadow-md shadow-red-200 active:bg-red-700'
+                        }`}
+                    disabled={isAcknowledged}
+                >
+                    <CheckCheck size={14} />
+                    {isAcknowledged ? 'Quittiert – keine weiteren Meldungen' : 'Alarm quittieren'}
+                </button>
+            )}
 
             {lastUpdate && (
                 <div className="flex items-center space-x-8 text-gray-500">

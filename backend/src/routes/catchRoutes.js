@@ -184,7 +184,27 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// Share a catch with another user by email
+// Acknowledge alarm — stops repeat notifications without changing sensor status
+router.post('/:id/acknowledge', async (req, res) => {
+    try {
+        const catchSensor = await CatchSensor.findByPk(req.params.id);
+        if (!catchSensor) return res.status(404).json({ error: 'Melder nicht gefunden' });
+
+        const CatchShare = require('../models/CatchShare');
+        const hasAccess = catchSensor.userId === req.user.id ||
+            await CatchShare.findOne({ where: { catchSensorId: req.params.id, userId: req.user.id } });
+
+        if (!hasAccess) return res.status(403).json({ error: 'Kein Zugriff' });
+
+        await catchSensor.update({ alarmAcknowledgedAt: new Date() });
+
+        res.json({ message: 'Alarm quittiert. Keine weiteren Benachrichtigungen bis zum nächsten Ereignis.' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 router.post('/:id/share', async (req, res) => {
     try {
         const { email } = req.body;

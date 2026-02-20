@@ -91,6 +91,12 @@ const Dashboard = ({ onLogout }) => {
         setCatches([...catches, newCatch]);
     };
 
+    const handleAcknowledge = (catchId) => {
+        setCatches(prev => prev.map(c =>
+            c.id === catchId ? { ...c, alarmAcknowledgedAt: new Date().toISOString() } : c
+        ));
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-96">
@@ -133,6 +139,7 @@ const Dashboard = ({ onLogout }) => {
                                 catchSensor={c}
                                 isShared={c.userId !== currentUserId}
                                 onViewHistory={(t) => setSelectedCatch(t)}
+                                onAcknowledge={handleAcknowledge}
                             />
                         ))}
                     </div>

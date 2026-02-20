@@ -70,6 +70,11 @@ const CatchSensor = sequelize.define('CatchSensor', {
         type: DataTypes.DATE,
         allowNull: true,
     },
+    alarmAcknowledgedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Set when user acknowledges an alarm. Cleared when a new trigger event arrives.'
+    },
     userId: {
         type: DataTypes.UUID,
         allowNull: true,

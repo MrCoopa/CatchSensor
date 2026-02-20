@@ -45,13 +45,22 @@ const setupWatchdog = (io) => {
 
                 const sensorLabel = sensor.alias || sensor.name || sensor.deviceId || sensor.imei;
 
-                // ── 1. ALARM: repeat alert while sensor remains triggered ──────────
+                // ── 1. ALARM: repeat alert while sensor remains triggered and not acknowledged ──
                 if (sensor.status === 'triggered') {
-                    const lastAlert = sensor.lastCatchAlert;
-                    const sinceAlert = lastAlert ? (Date.now() - new Date(lastAlert).getTime()) / 3600000 : Infinity;
-                    if (sinceAlert >= catchInterval) {
-                        console.log(`Watchdog: 🚨 Re-alerting TRIGGERED sensor "${sensorLabel}" (${sinceAlert.toFixed(1)}h since last alert)`);
-                        await sendUnifiedNotification(user, sensor, 'ALARM');
+                    // Skip if user has acknowledged this alarm event
+                    const isAcknowledged = sensor.alarmAcknowledgedAt &&
+                        sensor.lastCatchAlert &&
+                        new Date(sensor.alarmAcknowledgedAt) >= new Date(sensor.lastCatchAlert);
+
+                    if (isAcknowledged) {
+                        console.log(`Watchdog: ✅ Alarm acknowledged for "${sensorLabel}" — skipping re-alert`);
+                    } else {
+                        const lastAlert = sensor.lastCatchAlert;
+                        const sinceAlert = lastAlert ? (Date.now() - new Date(lastAlert).getTime()) / 3600000 : Infinity;
+                        if (sinceAlert >= catchInterval) {
+                            console.log(`Watchdog: 🚨 Re-alerting TRIGGERED sensor "${sensorLabel}" (${sinceAlert.toFixed(1)}h since last alert)`);
+                            await sendUnifiedNotification(user, sensor, 'ALARM');
+                        }
                     }
                 }
 
