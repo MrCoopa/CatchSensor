@@ -73,10 +73,14 @@ const cyan = (t) => colorize(t, '36');
 const bold = (t) => colorize(t, '1');
 const dim = (t) => colorize(t, '2');
 
-const printHeader = () => {
+const printHeader = (details = null) => {
     console.clear();
     console.log(bold(cyan('\n  🦊 CatchSensor — NB-IoT MQTT Simulator')));
-    console.log(dim(`  Broker: mqtt://${BROKER_HOST}:${BROKER_PORT}\n`));
+    if (details) {
+        console.log(dim(`  Connecting to: ${details}\n`));
+    } else {
+        console.log(dim(`  Broker: [Enter details below]\n`));
+    }
 };
 
 // ── Publish single message ───────────────────────────────────────────────────
@@ -127,21 +131,22 @@ const connectToBroker = () => new Promise((resolve, reject) => {
 
     const client = mqtt.connect(connectionUrl, options);
 
+    console.log(dim(`  Attempting connection to ${connectionUrl}...`));
+
     const timeout = setTimeout(() => {
         client.end();
-        reject(new Error(`Could not connect to broker at ${connectionUrl}`));
-    }, 5000);
+        reject(new Error(`Connection Timeout: Could not reach ${connectionUrl}`));
+    }, 8000);
 
     client.on('connect', () => {
         clearTimeout(timeout);
-        console.log(green(`  ✓ Connected to ${connectionUrl}\n`));
+        console.log(green(`  ✓ Connected successfully to ${connectionUrl}\n`));
         resolve(client);
     });
 
-
     client.on('error', (err) => {
         clearTimeout(timeout);
-        reject(err);
+        reject(new Error(`MQTT Error: ${err.message}`));
     });
 });
 
