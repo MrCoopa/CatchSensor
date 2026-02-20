@@ -104,6 +104,15 @@ aedes.on('connectionError', (client, err) => {
     console.log(`MQTT Broker: ❌ Connection Error: ${err.message}`);
 });
 
+aedes.on('publish', (packet, client) => {
+    if (client) console.log(`MQTT Broker: 📤 Packet from ${client.id} on topic: ${packet.topic}`);
+});
+
+aedes.preConnect = (client, done) => {
+    console.log(`MQTT Broker: ⏳ Pre-connect from client: ${client.id}`);
+    done(null, true);
+};
+
 // aedes.on('subscribe', (subs, client) => {
 //     console.log(`MQTT Broker: Client ${client ? client.id : 'unknown'} subscribed to ${subs.map(s => s.topic).join(', ')}`);
 // });
