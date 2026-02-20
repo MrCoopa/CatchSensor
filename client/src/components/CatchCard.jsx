@@ -17,10 +17,13 @@ const CatchCard = ({ catchSensor, onViewHistory, isShared, onAcknowledge }) => {
     const voltage = catchSensor.batteryVoltage; // mV
     const lastUpdate = catchSensor.lastSeen;
 
-    // Is this alarm already acknowledged (no more repeat alerts)?
-    const isAcknowledged = catchSensor.alarmAcknowledgedAt &&
-        catchSensor.lastCatchAlert &&
-        new Date(catchSensor.alarmAcknowledgedAt) >= new Date(catchSensor.lastCatchAlert);
+    // Acknowledged = alarmAcknowledgedAt is set, AND either:
+    // - lastCatchAlert was reset to null (we just acknowledged), OR
+    // - the acknowledgment happened AFTER the last notification
+    const isAcknowledged = !!catchSensor.alarmAcknowledgedAt && (
+        !catchSensor.lastCatchAlert ||
+        new Date(catchSensor.alarmAcknowledgedAt) >= new Date(catchSensor.lastCatchAlert)
+    );
 
     const statusConfig = {
         active: {
@@ -95,8 +98,8 @@ const CatchCard = ({ catchSensor, onViewHistory, isShared, onAcknowledge }) => {
                 <button
                     onClick={handleAcknowledge}
                     className={`mb-3 flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${isAcknowledged
-                            ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-default'
-                            : 'bg-red-600 text-white shadow-md shadow-red-200 active:bg-red-700'
+                        ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-default'
+                        : 'bg-red-600 text-white shadow-md shadow-red-200 active:bg-red-700'
                         }`}
                     disabled={isAcknowledged}
                 >
