@@ -31,6 +31,12 @@ services:
       - TTN_MQTT_USER=${TTN_MQTT_USER}
       - TTN_MQTT_PASS=${TTN_MQTT_PASS}
       - TTN_MQTT_TOPIC=${TTN_MQTT_TOPIC:-#}
+      # NB-IoT External Broker (Optional as Aedes is used internally)
+      - NBIOT_MQTT_BROKER=${NBIOT_MQTT_BROKER}
+      - NBIOT_MQTT_PORT=${NBIOT_MQTT_PORT:-1883}
+      - NBIOT_MQTT_USER=${NBIOT_MQTT_USER}
+      - NBIOT_MQTT_PASS=${NBIOT_MQTT_PASS}
+      - NBIOT_MQTT_TOPIC=${NBIOT_MQTT_TOPIC:-catches/+/data}
       # Additional Notification Config
       - PUSHOVER_USER=${PUSHOVER_USER}
       - PUSHOVER_TOKEN=${PUSHOVER_TOKEN}
