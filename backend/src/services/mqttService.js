@@ -42,8 +42,6 @@ const setupMQTT = (io, aedes) => {
         const ttnPort = process.env.TTN_MQTT_PORT || 1883;
         const protocol = ttnPort == 8883 ? 'mqtts' : 'mqtt';
 
-        console.log(`MQTT: 🔍 TTN Config Check - User: ${process.env.TTN_MQTT_USER?.substring(0, 5)}..., Pass-Length: ${process.env.TTN_MQTT_PASS?.length}, Port: ${ttnPort}`);
-
         connectToBroker({
             name: 'LoRaWAN (TTN)',
             url: `${protocol}://${process.env.TTN_MQTT_BROKER || 'eu1.cloud.thethings.network'}`,
@@ -52,7 +50,6 @@ const setupMQTT = (io, aedes) => {
             password: process.env.TTN_MQTT_PASS,
             topic: '#' // Use wildcard as specific topics are being rejected
         }, (topic, payload) => {
-            console.log(`MQTT: TTN Raw Topic: ${topic}`);
             if (topic.endsWith('/up')) {
                 handleMQTTMessage(topic, payload, io, 'LORAWAN');
             } else {
