@@ -61,7 +61,8 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Embedded MQTT Broker (Aedes)
-const aedes = new (require('aedes'))();
+const { Aedes } = require('aedes');
+const aedes = new Aedes();
 const aedesServerFactory = require('aedes-server-factory');
 
 // MQTT Health Monitor
