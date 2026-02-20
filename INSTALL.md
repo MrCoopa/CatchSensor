@@ -33,27 +33,54 @@ Bevor du startest, stelle sicher, dass folgende Software installiert ist:
 
 ---
 
-## 3. Zentrale Konfiguration (.env)
+## 3. Umgebungsvariablen für Portainer (Vollliste)
 
-Es gibt nur **eine einzige Stelle** für alle Einstellungen: die `.env` Datei im Hauptverzeichnis.
+In Portainer müssen diese Variablen im Stack-Editor (Environment tab) gesetzt werden. Hier ist die vollständige Liste aller relevanten Variablen:
 
+### Basis-System
 ```env
-PORT=5000
-DB_HOST=localhost         # Oder catchsensor_db bei Docker
-JWT_SECRET=dein_geheimer_schluessel
-VITE_API_URL=https://catchsensor.home
-APP_BASE_URL=https://catchsensor.home
+PORT=5000                         # Standard-Port der App
+DB_HOST=catchsensor_db            # Docker-Service Name der DB
+DB_NAME=catchsensor               # Name der Datenbank
+DB_USER=root                      # DB-Nutzer
+DB_PASS=root                      # DB-Passwort
+JWT_SECRET=dein_geheimer_key      # Zum Signieren von Logins
+VITE_API_URL=https://catchsensor.home # URL für das Frontend-Build
+APP_BASE_URL=https://catchsensor.home # Basis-URL für Benachrichtigungen
+```
 
-# TTN LoRaWAN (optional)
+### Interner MQTT Broker (Aedes)
+Für NB-IoT Melder, die direkt mit dem Server kommunizieren.
+```env
+INTERNAL_MQTT_USER=catch_admin    # Nutzername für Melder-Login
+INTERNAL_MQTT_PASS=geheim123      # Passwort für Melder-Login
+```
+
+### LoRaWAN via The Things Network (TTN)
+```env
 TTN_MQTT_BROKER=eu1.cloud.thethings.network
-TTN_MQTT_USER=...
-TTN_MQTT_PASS=...
-TTN_MQTT_TOPIC=...
+TTN_MQTT_PORT=1883                # 1883 (Standard) oder 8883 (SSL)
+TTN_MQTT_USER=melder@ttn          # Dein TTN Application ID
+TTN_MQTT_PASS=NNSXS.XXX...        # Dein TTN API Key
+TTN_MQTT_TOPIC=#                  # Wildcard oder spezifisch v3/+/devices/+/up
+```
 
-# Firebase (für Docker - Base64 des serviceAccountKey.json)
-# Generieren mit PowerShell:
-# [Convert]::ToBase64String([IO.File]::ReadAllBytes("backend\serviceAccountKey.json"))
-FIREBASE_SERVICE_ACCOUNT_B64=...
+### Benachrichtigungen (Native Push & Pushover)
+```env
+# Firebase Cloud Messaging (Base64 des JSON-Keys — siehe Abschnitt 6)
+FIREBASE_SERVICE_ACCOUNT_B64=ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAg...
+
+# Globales Pushover (Server-seitiger Zweitkanal)
+PUSHOVER_USER=your_user_key
+PUSHOVER_TOKEN=your_app_token
+```
+
+### Externer NB-IoT Broker (Optional)
+Nur falls Melder NICHT den internen Broker nutzen, sondern einen externen Server.
+```env
+NBIOT_MQTT_BROKER=your-external-broker.com
+NBIOT_MQTT_USER=...
+NBIOT_MQTT_PASS=...
 ```
 
 ---
