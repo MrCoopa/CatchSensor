@@ -60,70 +60,59 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION:', reason);
 });
 
-// Embedded MQTT Broker (Aedes 1.x)
-const { Aedes } = require('aedes');
-const aedes = new Aedes();
+// Embedded MQTT Broker (Aedes 0.x — stable)
+const aedes = require('aedes')();
 
-// --- THE ULTIMATE TRACER ---
-// Log EVERY event that happens inside Aedes to find the "dead end"
-[
-    'client', 'clientReady', 'clientDisconnect', 'clientError',
-    'connectionError', 'keepaliveTimeout', 'publish', 'subscribe',
-    'unsubscribe', 'ack', 'ping', 'connackSent', 'closed'
-].forEach(event => {
-    aedes.on(event, (arg1, arg2) => {
-        let details = '';
-        if (arg1 && arg1.id) details = `(Client: ${arg1.id})`;
-        else if (arg1 && arg1.cmd) details = `(CMD: ${arg1.cmd})`;
-        console.log(`MQTT: 🔍 Event [${event}] ${details}`);
-        if (event.includes('Error')) console.error(`MQTT: ❌ ${event} details:`, arg2 || arg1);
-    });
-});
+// Authentication (optional — only if env vars are set)
+const INTERNAL_MQTT_USER = process.env.INTERNAL_MQTT_USER;
+const INTERNAL_MQTT_PASS = process.env.INTERNAL_MQTT_PASS;
 
-// Bare-bones hooks
-aedes.preConnect = (client, packet, callback) => {
-    console.log(`MQTT: ⏳ [Stage 1] Pre-connect via ${client.id || 'initial'}`);
-    callback(null, true);
-};
+if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
+    aedes.authenticate = function (client, username, password, callback) {
+        const authorized = (username === INTERNAL_MQTT_USER && password?.toString() === INTERNAL_MQTT_PASS);
+        if (authorized) {
+            console.log(`MQTT: ✅ Auth Success: ${client.id}`);
+            callback(null, true);
+        } else {
+            console.warn(`MQTT: ❌ Auth Failed: ${client.id}`);
+            const error = new Error('Auth error');
+            error.returnCode = 4;
+            callback(error, null);
+        }
+    };
+}
 
-aedes.authenticate = (client, username, password, callback) => {
-    console.log(`MQTT: 🔐 [Stage 2] Authenticating: ${client.id}`);
-    callback(null, true);
-};
+// Event logging
+aedes.on('client', (client) => console.log(`MQTT: 🟢 Client Connected: ${client.id}`));
+aedes.on('clientReady', (client) => console.log(`MQTT: ✨ Client Ready: ${client.id}`));
+aedes.on('clientDisconnect', (client) => console.log(`MQTT: 🔴 Client Disconnected: ${client.id}`));
+aedes.on('clientError', (client, err) => console.warn(`MQTT: ⚠️ Client Error (${client.id}): ${err.message}`));
+aedes.on('connectionError', (client, err) => console.error(`MQTT: ❌ Connection Error: ${err.message}`));
+aedes.on('connackSent', (client) => console.log(`MQTT: 📤 CONNACK Sent: ${client.id}`));
 
 const setupEmbeddedBroker = (io) => {
     const net = require('net');
     const ws = require('ws');
 
-    // TCP Server (1884)
-    const mqttServer = net.createServer((socket) => {
-        console.log(`MQTT: 📶 [Stage 0] TCP Connection from ${socket.remoteAddress}`);
-        socket.on('error', (err) => console.error('MQTT: [Socket Error]:', err.message));
-        aedes.handle.bind(aedes)(socket);
-    });
-
+    // TCP Server (Port 1884)
+    const mqttServer = net.createServer(aedes.handle);
     mqttServer.listen(1884, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
     });
 
-    // WS Server (1885)
+    // WebSocket Server (Port 1885)
     const wsServer = new ws.Server({ port: 1885, host: '0.0.0.0' }, () => {
         console.log('✅ Embedded MQTT Broker (WS) running on 0.0.0.0:1885');
     });
 
     wsServer.on('connection', (socket) => {
-        console.log('MQTT: 📶 [Stage 0] WS Connection');
         const stream = ws.createWebSocketStream(socket);
-        aedes.handle.bind(aedes)(stream);
+        aedes.handle(stream);
     });
 
-    // mqttService integration
-    try {
-        const { setupMQTT } = require('./src/services/mqttService');
-        setupMQTT(io, aedes);
-    } catch (e) {
-        console.error('MQTT: Failed to load mqttService:', e.message);
-    }
+    // Load MQTT business logic
+    const { setupMQTT } = require('./src/services/mqttService');
+    setupMQTT(io, aedes);
 
     return aedes;
 };
