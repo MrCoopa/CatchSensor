@@ -65,69 +65,69 @@ const { Aedes } = require('aedes');
 const aedes = new Aedes();
 const aedesServerFactory = require('aedes-server-factory');
 
-// MQTT Health Monitor
-setInterval(() => {
-    if (aedes) {
-        console.log(`MQTT Health: Connected Clients: ${aedes.connectedClients || 0}`);
-    }
-}, 30000);
-
 // Embedded Broker Authentication Logic
 const INTERNAL_MQTT_USER = process.env.INTERNAL_MQTT_USER;
 const INTERNAL_MQTT_PASS = process.env.INTERNAL_MQTT_PASS;
 
-if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
-    aedes.authenticate = (client, username, password, callback) => {
-        const authorized = (username === INTERNAL_MQTT_USER && password.toString() === INTERNAL_MQTT_PASS);
+aedes.authenticate = function (client, username, password, callback) {
+    if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
+        const authorized = (username === INTERNAL_MQTT_USER && password?.toString() === INTERNAL_MQTT_PASS);
         if (authorized) {
-            console.log(`MQTT Broker: Client auth success: ${client.id}`);
+            console.log(`MQTT: ✅ [2] Auth Success: ${client.id}`);
             callback(null, true);
         } else {
-            console.warn(`MQTT Broker: Client auth FAILED: ${client.id} (Username: ${username})`);
+            console.warn(`MQTT: ❌ [2] Auth Failed: ${client.id} (User: ${username})`);
             const error = new Error('Auth error');
-            error.returnCode = 4; // Connection Refused: Bad user name or password
+            error.returnCode = 4;
             callback(error, null);
         }
-    };
-    console.log('MQTT Broker: 🔒 Authentication enabled for embedded broker.');
-} else {
-    // Log even when no auth is required to see progress
-    aedes.authenticate = (client, username, password, callback) => {
-        console.log(`MQTT Broker: 🔓 Connection attempt (no auth): ${client.id} (Username: ${username || 'none'})`);
+    } else {
+        console.log(`MQTT: 🔓 [2] Connection (no auth): ${client.id}`);
         callback(null, true);
-    };
-    console.log('MQTT Broker: ⚠️ No authentication set for embedded broker (INTERNAL_MQTT_USER/PASS not set).');
-}
+    }
+};
 
 // Aedes event logging
 aedes.on('client', function (client) {
-    console.log(`MQTT Broker: 🟢 Client CONNECTED: ${client ? client.id : 'unknown'}`);
+    console.log(`MQTT: 🟢 [5] Client CONNECTED: ${client ? client.id : 'unknown'}`);
 });
 
 aedes.on('clientReady', function (client) {
-    console.log(`MQTT Broker: ✨ Client READY: ${client ? client.id : 'unknown'}`);
+    console.log(`MQTT: ✨ [6] Client READY: ${client ? client.id : 'unknown'}`);
 });
 
 aedes.on('clientDisconnect', function (client) {
-    console.log(`MQTT Broker: 🔴 Client DISCONNECTED: ${client ? client.id : 'unknown'}`);
+    console.log(`MQTT: 🔴 Client DISCONNECTED: ${client ? client.id : 'unknown'}`);
 });
 
 aedes.on('clientError', function (client, err) {
-    console.warn(`MQTT Broker: ⚠️ Client Error: ${client ? client.id : 'unknown'} - ${err.message}`);
+    console.warn(`MQTT: ⚠️ Client Error: ${client ? client.id : 'unknown'} - ${err.message}`);
 });
 
 aedes.on('connectionError', function (client, err) {
-    console.error(`MQTT Broker: ❌ Connection Error: ${err.message}`);
+    console.error(`MQTT: ❌ Connection Error: ${err.message}`);
 });
 
 aedes.on('connackSent', function (client) {
-    console.log(`MQTT Broker: 📤 [4] CONNACK sent to ${client ? client.id : 'unknown'}`);
+    console.log(`MQTT: 📤 [4] CONNACK sent to ${client ? client.id : 'unknown'}`);
+});
+
+// Correct signature for Aedes 1.x preConnect (3 arguments)
+aedes.preConnect = function (client, packet, callback) {
+    console.log(`MQTT: ⏳ [1] Pre-connect: ${client.id}`);
+    callback(null, true);
+};
+
+// Packet-level debugging
+aedes.on('subscribe', function (subs, client) {
+    console.log(`MQTT: 📝 Subscriptions from ${client ? client.id : 'unknown'}: ${subs.map(s => s.topic).join(', ')}`);
 });
 
 const setupEmbeddedBroker = (io) => {
-    // 1. Raw TCP MQTT Server (Port 1884)
-    const mqttServer = aedesServerFactory.createServer(aedes);
-    mqttServer.on('error', (err) => console.error('MQTT Server TCP Error:', err));
+    // 1. Raw TCP MQTT Server (Port 1884) - Using direct 'net' for stability
+    const net = require('net');
+    const mqttServer = net.createServer(aedes.handle);
+    mqttServer.on('error', (err) => console.error('MQTT TCP Error:', err));
     mqttServer.listen(1884, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
     });
