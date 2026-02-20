@@ -60,9 +60,8 @@ INTERNAL_MQTT_PASS=geheim         # Beispiel-Passwort (bitte anpassen)
 ```env
 TTN_MQTT_BROKER=eu1.cloud.thethings.network
 TTN_MQTT_PORT=8883                # 8883 (SSL/mqtts)
-TTN_MQTT_USER=melder@ttn          # Deine TTN Application ID
-TTN_MQTT_PASS=NNSXS.J3L2BGKV7VWZJVU6FODFP6K7VIJOL4GOMPOGAQJXI476LFGXAB34442WHL2UN65KDZ
-TTN_MQTT_TOPIC=/v3/melder@ttn/devices/+/up
+TTN_MQTT_USER=...@ttn          # Deine TTN Application ID
+TTN_MQTT_PASS=...
 ```
 
 ### Benachrichtigungen (Native Push & Pushover)
