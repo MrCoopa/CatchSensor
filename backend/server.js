@@ -102,19 +102,32 @@ aedes.on('connectionError', (client, err) => {
 aedes.on('connackSent', (client) => console.log(`MQTT: 📤 CONNACK Sent: ${client ? client.id : 'unknown'}`));
 
 const setupEmbeddedBroker = (io) => {
+    const net = require('net');
+    const ws = require('ws');
+
     // 1. Raw TCP MQTT Server (Port 1884)
-    const mqttServer = aedesServerFactory.createServer(aedes);
-    mqttServer.on('error', (err) => console.error('MQTT TCP Server Error:', err));
+    const mqttServer = net.createServer((socket) => {
+        console.log(`MQTT: 📶 TCP Connection from ${socket.remoteAddress}`);
+        aedes.handle(socket);
+    });
+
+    mqttServer.on('error', (err) => console.error('MQTT: TCP Server Error:', err));
     mqttServer.listen(1884, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
     });
 
     // 2. WebSocket MQTT Server (Port 1885)
-    const wsServer = aedesServerFactory.createServer(aedes, { ws: true });
-    wsServer.on('error', (err) => console.error('MQTT WS Server Error:', err));
-    wsServer.listen(1885, '0.0.0.0', () => {
+    const wsServer = new ws.Server({ port: 1885, host: '0.0.0.0' }, () => {
         console.log('✅ Embedded MQTT Broker (WS) running on 0.0.0.0:1885');
     });
+
+    wsServer.on('connection', (socket) => {
+        console.log('MQTT: 📶 WS Connection');
+        const stream = ws.createWebSocketStream(socket);
+        aedes.handle(stream);
+    });
+
+    wsServer.on('error', (err) => console.error('MQTT: WS Server Error:', err));
 
     // Initialize the shared Service logic with the broker instance
     const { setupMQTT } = require('./src/services/mqttService');
