@@ -196,9 +196,14 @@ router.post('/:id/acknowledge', async (req, res) => {
 
         if (!hasAccess) return res.status(403).json({ error: 'Kein Zugriff' });
 
-        await catchSensor.update({ alarmAcknowledgedAt: new Date() });
+        // Reset both the acknowledgment marker AND the throttle timestamp,
+        // so the next incoming trigger sends a push notification immediately.
+        await catchSensor.update({
+            alarmAcknowledgedAt: new Date(),
+            lastCatchAlert: null
+        });
 
-        res.json({ message: 'Alarm quittiert. Keine weiteren Benachrichtigungen bis zum nächsten Ereignis.' });
+        res.json({ message: 'Alarm quittiert. Nächster Alarm wird sofort gemeldet.' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
