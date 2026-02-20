@@ -96,8 +96,17 @@ aedes.on('connectionError', (client, err) => console.log(`MQTT: Connection Error
 aedes.on('connackSent', (client) => console.log(`MQTT: CONNACK Sent: ${client ? client.id : 'unknown'}`));
 
 const setupEmbeddedBroker = (io) => {
+    const net = require('net');
+
     // 1. Raw TCP MQTT Server (Port 1884)
-    const mqttServer = aedesServerFactory.createServer(aedes);
+    // We use a raw net server to log diagnostic data before handing over to Aedes
+    const mqttServer = net.createServer((socket) => {
+        socket.once('data', (chunk) => {
+            console.log(`MQTT: 📥 Incoming TCP Data (First 16 bytes): ${chunk.slice(0, 16).toString('hex')} [${chunk.slice(0, 16).toString('ascii').replace(/[^\x20-\x7E]/g, '.')}]`);
+        });
+        aedes.handle(socket);
+    });
+
     mqttServer.on('error', (err) => console.error('MQTT Server TCP Error:', err));
     mqttServer.listen(1884, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
