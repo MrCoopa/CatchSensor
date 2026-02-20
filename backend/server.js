@@ -93,36 +93,29 @@ if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
 }
 
 // Aedes event logging
-aedes.on('client', (client) => {
+aedes.on('client', function (client) {
     console.log(`MQTT Broker: 🟢 Client CONNECTED: ${client ? client.id : 'unknown'}`);
 });
 
-aedes.on('clientReady', (client) => {
+aedes.on('clientReady', function (client) {
     console.log(`MQTT Broker: ✨ Client READY: ${client ? client.id : 'unknown'}`);
 });
 
-aedes.on('clientDisconnect', (client) => {
+aedes.on('clientDisconnect', function (client) {
     console.log(`MQTT Broker: 🔴 Client DISCONNECTED: ${client ? client.id : 'unknown'}`);
 });
 
-aedes.on('clientError', (client, err) => {
+aedes.on('clientError', function (client, err) {
     console.warn(`MQTT Broker: ⚠️ Client Error: ${client ? client.id : 'unknown'} - ${err.message}`);
-    if (err.stack) console.debug(err.stack);
 });
 
-aedes.on('connectionError', (client, err) => {
+aedes.on('connectionError', function (client, err) {
     console.error(`MQTT Broker: ❌ Connection Error: ${err.message}`);
-    if (err.stack) console.debug(err.stack);
 });
 
-aedes.on('connackSent', (client) => {
+aedes.on('connackSent', function (client) {
     console.log(`MQTT Broker: 📤 [4] CONNACK sent to ${client ? client.id : 'unknown'}`);
 });
-
-aedes.preConnect = (client, done) => {
-    console.log(`MQTT Broker: ⏳ [1] Pre-connect attempt...`);
-    done(null, true);
-};
 
 const setupEmbeddedBroker = (io) => {
     // 1. Raw TCP MQTT Server (Port 1884)
