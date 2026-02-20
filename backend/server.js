@@ -99,7 +99,7 @@ const setupEmbeddedBroker = (io) => {
     const mqttServer = net.createServer((socket) => {
         console.log(`MQTT: 📶 [Stage 0] TCP Connection from ${socket.remoteAddress}`);
         socket.on('error', (err) => console.error('MQTT: [Socket Error]:', err.message));
-        aedes.handle(socket);
+        aedes.handle.bind(aedes)(socket);
     });
 
     mqttServer.listen(1884, '0.0.0.0', () => {
@@ -114,7 +114,7 @@ const setupEmbeddedBroker = (io) => {
     wsServer.on('connection', (socket) => {
         console.log('MQTT: 📶 [Stage 0] WS Connection');
         const stream = ws.createWebSocketStream(socket);
-        aedes.handle(stream);
+        aedes.handle.bind(aedes)(stream);
     });
 
     // mqttService integration
