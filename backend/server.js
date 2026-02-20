@@ -119,6 +119,11 @@ aedes.on('connackSent', (client) => {
     console.log(`MQTT Broker: 📤 [4] CONNACK sent to ${client ? client.id : 'unknown'}`);
 });
 
+aedes.preConnect = (client, done) => {
+    console.log(`MQTT Broker: ⏳ [1] Pre-connect attempt...`);
+    done(null, true);
+};
+
 const setupEmbeddedBroker = (io) => {
     // 1. Raw TCP MQTT Server (Port 1884)
     const mqttServer = aedesServerFactory.createServer(aedes);
