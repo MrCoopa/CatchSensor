@@ -61,7 +61,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Embedded MQTT Broker (Aedes 1.x)
-const Aedes = require('aedes');
+const { Aedes } = require('aedes');
 const aedes = new Aedes();
 
 // 1. Stage: Pre-Connect (Signature: client, packet, callback)
@@ -106,6 +106,7 @@ const setupEmbeddedBroker = (io) => {
 
     // TCP Server (1884)
     const mqttServer = net.createServer((socket) => {
+        console.log(`MQTT: 📶 Incoming connection from ${socket.remoteAddress}`);
         socket.on('error', (err) => console.error('MQTT: Socket Error:', err.message));
         aedes.handle(socket);
     });
