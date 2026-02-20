@@ -203,6 +203,13 @@ router.post('/:id/acknowledge', async (req, res) => {
             lastCatchAlert: null
         });
 
+        // Push the updated sensor state to the client immediately via Socket.IO,
+        // so the UI shows 'Quittiert' even if the simulator keeps sending trigger packets.
+        if (catchSensor.userId) {
+            const updatedSensor = await catchSensor.reload();
+            req.io.to(`user_${catchSensor.userId}`).emit('catchSensorUpdate', updatedSensor);
+        }
+
         res.json({ message: 'Alarm quittiert. Nächster Alarm wird sofort gemeldet.' });
     } catch (error) {
         res.status(500).json({ error: error.message });
