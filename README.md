@@ -30,8 +30,25 @@ A self-hosted IoT monitoring platform for trap/catch sensors using **NB-IoT** an
 - Alert deduplication via per-sensor cooldown timestamps (`lastCatchAlert`, `lastBatteryAlert`, `lastOfflineAlert`)
 
 ### MQTT / Data Ingestion
-- Embedded [Aedes](https://github.com/moscajs/aedes) MQTT broker on port `1884`
-- Supports NB-IoT payload format (4-byte binary)
+- Embedded [Aedes](https://github.com/moscajs/aedes) MQTT broker:
+  - **TCP (Raw):** Port `1884` (fast, but harder to proxy over port 443)
+  - **WebSockets (WS):** Port `1885` (ideal for proxying through Nginx Proxy Manager/HTTPS)
+- Topic structure: `catches/{imei}/data` (NB-IoT binary) or `v3/{appId}@ttn/devices/{deviceId}/up` (LoRaWAN JSON)
+- MQTT Simulator tool available in `/tools/nb-iot-simulator.js`
+
+#### Connecting through Nginx Proxy Manager (NPM)
+To reach the MQTT broker from the internet or cross-network:
+
+**Method 1: WebSockets (Recommended for Internet)**
+1. In NPM, create a new **Proxy Host** for `mqtt.yourdomain.com`.
+2. Forward to `catchsensor_app` on Port `1885`.
+3. Enable **Websockets Support**.
+4. Simulator Usage: `--host ws://mqtt.yourdomain.com` (no port needed if using port 80/443).
+
+**Method 2: Raw TCP Stream**
+1. In NPM, go to **Streams**.
+2. Add **Stream**: Incoming Port `1884`, Forward Host `catchsensor_app`, Forward Port `1884`.
+3. Simulator Usage: `--host yourdomain.com --port 1884`.
 - Supports The Things Network (TTN) LoRaWAN uplinks via external MQTT bridge
 - Direct publish simulation endpoint for testing
 

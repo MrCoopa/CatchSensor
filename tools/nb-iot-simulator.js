@@ -100,15 +100,22 @@ const sendMessage = (client, imei, status, voltageMv, rssiAbs, useJitter = false
 
 // ── Connect to broker ────────────────────────────────────────────────────────
 const connectToBroker = () => new Promise((resolve, reject) => {
-    const client = mqtt.connect(`mqtt://${BROKER_HOST}`, { port: BROKER_PORT });
+    const isWS = BROKER_HOST.startsWith('ws://') || BROKER_HOST.startsWith('wss://');
+    const url = isWS ? BROKER_HOST : `mqtt://${BROKER_HOST}`;
+
+    // For WS, the port is usually part of the URL or handled by the proxy
+    const options = isWS ? {} : { port: BROKER_PORT };
+
+    const client = mqtt.connect(url, options);
+
     const timeout = setTimeout(() => {
         client.end();
-        reject(new Error(`Could not connect to broker at ${BROKER_HOST}:${BROKER_PORT}`));
+        reject(new Error(`Could not connect to broker at ${url}${isWS ? '' : ':' + BROKER_PORT}`));
     }, 5000);
 
     client.on('connect', () => {
         clearTimeout(timeout);
-        console.log(green(`  ✓ Connected to mqtt://${BROKER_HOST}:${BROKER_PORT}\n`));
+        console.log(green(`  ✓ Connected to ${url}${isWS ? '' : ':' + BROKER_PORT}\n`));
         resolve(client);
     });
     client.on('error', (err) => {

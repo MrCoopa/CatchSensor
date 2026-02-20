@@ -77,11 +77,21 @@ const aedesServerFactory = require('aedes-server-factory');
 // });
 
 const setupEmbeddedBroker = () => {
+    // 1. Raw TCP MQTT Server (Port 1884)
     const mqttServer = aedesServerFactory.createServer(aedes);
     mqttServer.on('error', (err) => console.error('MQTT Server Error:', err));
     mqttServer.listen(1884, '0.0.0.0', () => {
-        console.log('✅ Embedded MQTT Broker running on 0.0.0.0:1884');
+        console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
     });
+
+    // 2. WebSocket MQTT Server (Port 1885)
+    // This is easier to proxy via Nginx Proxy Manager (NPM)
+    const wsServer = aedesServerFactory.createServer(aedes, { ws: true });
+    wsServer.on('error', (err) => console.error('MQTT WS Server Error:', err));
+    wsServer.listen(1885, '0.0.0.0', () => {
+        console.log('✅ Embedded MQTT Broker (WS) running on 0.0.0.0:1885');
+    });
+
     return aedes;
 };
 

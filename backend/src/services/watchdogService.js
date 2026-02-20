@@ -39,9 +39,9 @@ const setupWatchdog = (io) => {
                 const user = userMap[sensor.userId];
                 if (!user) continue;
 
-                const catchInterval = user.catchAlertInterval || 3;   // hours between triggered repeat alerts
-                const batteryInterval = user.batteryAlertInterval || 8;   // hours between battery alerts
-                const offlineInterval = user.offlineAlertInterval || 8;   // hours before/between offline alerts
+                const catchInterval = 3;   // hours between triggered repeat alerts
+                const batteryInterval = 8;   // hours between battery alerts
+                const offlineInterval = 8;   // hours before/between offline alerts
 
                 const sensorLabel = sensor.alias || sensor.name || sensor.deviceId || sensor.imei;
 
