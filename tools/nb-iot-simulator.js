@@ -100,24 +100,35 @@ const sendMessage = (client, imei, status, voltageMv, rssiAbs, useJitter = false
 
 // ── Connect to broker ────────────────────────────────────────────────────────
 const connectToBroker = () => new Promise((resolve, reject) => {
-    const isWS = BROKER_HOST.startsWith('ws://') || BROKER_HOST.startsWith('wss://');
-    const url = isWS ? BROKER_HOST : `mqtt://${BROKER_HOST}`;
+    let url = BROKER_HOST || 'localhost';
+    let options = { port: BROKER_PORT };
 
-    // For WS, the port is usually part of the URL or handled by the proxy
-    const options = isWS ? {} : { port: BROKER_PORT };
+    // Auto-detect WebSocket protocol
+    const hasProtocol = url.includes('://');
+    const isWS = url.startsWith('ws://') || url.startsWith('wss://') || (!hasProtocol && BROKER_PORT === 1885);
 
+    if (isWS && !hasProtocol) {
+        url = `ws://${url}/mqtt`; // Aedes default WS path is often /mqtt or root
+    } else if (!hasProtocol) {
+        url = `mqtt://${url}`;
+    }
+
+    // For WS, port is usually in the URL string, but mqtt library handles options.port too
     const client = mqtt.connect(url, options);
+
+    const logUrl = `${url}${hasProtocol ? '' : ':' + BROKER_PORT}`;
 
     const timeout = setTimeout(() => {
         client.end();
-        reject(new Error(`Could not connect to broker at ${url}${isWS ? '' : ':' + BROKER_PORT}`));
+        reject(new Error(`Could not connect to broker at ${logUrl}`));
     }, 5000);
 
     client.on('connect', () => {
         clearTimeout(timeout);
-        console.log(green(`  ✓ Connected to ${url}${isWS ? '' : ':' + BROKER_PORT}\n`));
+        console.log(green(`  ✓ Connected to ${logUrl}\n`));
         resolve(client);
     });
+
     client.on('error', (err) => {
         clearTimeout(timeout);
         reject(err);
