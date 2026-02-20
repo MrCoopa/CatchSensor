@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
+const PushSubscription = require('../models/PushSubscription');
 
 // Initialize Firebase Admin SDK
 // Priority: 1. FIREBASE_SERVICE_ACCOUNT_B64 env var, 2. serviceAccountKey.json file
@@ -68,11 +69,17 @@ const sendNativeNotification = async (token, title, body, data = {}) => {
         console.log('Push Service: Native FCM sent successfully:', response);
         return response;
     } catch (error) {
-        console.error('Push Service: Error sending Native FCM:', error);
+        console.error('Push Service: Error sending Native FCM:', error.message);
         if (error.code === 'messaging/registration-token-not-registered') {
-            console.warn('Push Service: Token invalid/expired. Caller should cleanup database.');
-            throw error; // Let caller handle cleanup if needed
+            console.warn(`Push Service: Token expired/invalid — auto-deleting from DB: ${token.substring(0, 20)}...`);
+            try {
+                await PushSubscription.destroy({ where: { endpoint: token } });
+                console.log('Push Service: Stale token removed from DB.');
+            } catch (dbErr) {
+                console.error('Push Service: Failed to remove stale token from DB:', dbErr.message);
+            }
         }
+        throw error;
     }
 };
 

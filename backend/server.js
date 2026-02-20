@@ -111,7 +111,8 @@ app.use(cors({
         if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost') || origin.startsWith('capacitor://localhost')) {
             return callback(null, true);
         }
-        callback(null, true); // Allow all during transition, but with explicit headers
+        callback(new Error(`CORS: Origin ${origin} not allowed`));
+
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

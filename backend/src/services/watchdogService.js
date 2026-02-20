@@ -4,32 +4,84 @@ const User = require('../models/User');
 const { Op } = require('sequelize');
 const { sendUnifiedNotification } = require('./notificationService');
 
+/**
+ * Watchdog Service
+ * Runs every 15 minutes and handles persistent repeat alerts for:
+ *  - ALARM (triggered):       repeat every 3h until user resets to active
+ *  - CONNECTION_LOST (offline): repeat every 8h until sensor comes back online
+ *  - LOW_BATTERY:             repeat every 8h until battery is charged
+ *
+ * "Confirmation" is the natural state change:
+ *  - Triggered → user resets sensor to 'active' in Dashboard
+ *  - Offline   → sensor sends a message again
+ *  - Low batt  → battery charges and next message reports higher %
+ */
 const setupWatchdog = (io) => {
     console.log('Watchdog: Service initialized (Interval: Every 15 minutes)');
 
     cron.schedule('*/15 * * * *', async () => {
-        console.log('Watchdog: Checking for offline catches...');
-        const nineHoursAgo = new Date(Date.now() - 9 * 60 * 60 * 1000);
-
+        console.log('Watchdog: Running checks...');
         try {
-            const offlineCatches = await CatchSensor.findAll({
-                where: {
-                    lastSeen: { [Op.lt]: nineHoursAgo },
-                    status: { [Op.ne]: 'inactive' }
-                }
+            // Fetch all sensors that are owned by a user (unbound sensors are skipped)
+            const sensors = await CatchSensor.findAll({
+                where: { userId: { [Op.ne]: null } }
             });
 
-            for (const catchSensor of offlineCatches) {
-                console.log(`Watchdog: CatchSensor ${catchSensor.alias || catchSensor.name || catchSensor.deviceId || catchSensor.imei} is OFFLINE`);
+            if (sensors.length === 0) return;
 
-                await catchSensor.update({ status: 'inactive' });
+            // Batch-load all relevant users to avoid N+1 queries
+            const userIds = [...new Set(sensors.map(s => s.userId))];
+            const users = await User.findAll({ where: { id: { [Op.in]: userIds } } });
+            const userMap = {};
+            for (const u of users) userMap[u.id] = u;
 
-                io.emit('catchSensorUpdate', catchSensor);
+            for (const sensor of sensors) {
+                const user = userMap[sensor.userId];
+                if (!user) continue;
 
-                if (catchSensor.userId) {
-                    const user = await User.findByPk(catchSensor.userId);
-                    if (user) {
-                        await sendUnifiedNotification(user, catchSensor, 'CONNECTION_LOST');
+                const catchInterval = user.catchAlertInterval || 3;   // hours between triggered repeat alerts
+                const batteryInterval = user.batteryAlertInterval || 8;   // hours between battery alerts
+                const offlineInterval = user.offlineAlertInterval || 8;   // hours before/between offline alerts
+
+                const sensorLabel = sensor.alias || sensor.name || sensor.deviceId || sensor.imei;
+
+                // ── 1. ALARM: repeat alert while sensor remains triggered ──────────
+                if (sensor.status === 'triggered') {
+                    const lastAlert = sensor.lastCatchAlert;
+                    const sinceAlert = lastAlert ? (Date.now() - new Date(lastAlert).getTime()) / 3600000 : Infinity;
+                    if (sinceAlert >= catchInterval) {
+                        console.log(`Watchdog: 🚨 Re-alerting TRIGGERED sensor "${sensorLabel}" (${sinceAlert.toFixed(1)}h since last alert)`);
+                        await sendUnifiedNotification(user, sensor, 'ALARM');
+                    }
+                }
+
+                // ── 2. CONNECTION_LOST: alert if sensor hasn't been seen in offlineInterval hours ──
+                if (sensor.lastSeen) {
+                    const hoursSinceLastSeen = (Date.now() - new Date(sensor.lastSeen).getTime()) / 3600000;
+                    if (hoursSinceLastSeen >= offlineInterval) {
+                        console.log(`Watchdog: 📡 Sensor "${sensorLabel}" is OFFLINE (${hoursSinceLastSeen.toFixed(1)}h since last seen)`);
+
+                        // Update status to inactive if not already
+                        if (sensor.status !== 'inactive') {
+                            await sensor.update({ status: 'inactive' });
+                            io.emit('catchSensorUpdate', sensor);
+                        }
+
+                        // sendUnifiedNotification handles its own throttle via lastOfflineAlert
+                        await sendUnifiedNotification(user, sensor, 'CONNECTION_LOST');
+                    }
+                }
+
+                // ── 3. LOW_BATTERY: repeat alert while battery stays below threshold ──
+                if (sensor.batteryPercent !== null) {
+                    const threshold = user.batteryThreshold || 20;
+                    if (sensor.batteryPercent < threshold) {
+                        const lastAlert = sensor.lastBatteryAlert;
+                        const sinceAlert = lastAlert ? (Date.now() - new Date(lastAlert).getTime()) / 3600000 : Infinity;
+                        if (sinceAlert >= batteryInterval) {
+                            console.log(`Watchdog: 🪫 Re-alerting LOW BATTERY sensor "${sensorLabel}" (${sensor.batteryPercent}% < ${threshold}%)`);
+                            await sendUnifiedNotification(user, sensor, 'LOW_BATTERY');
+                        }
                     }
                 }
             }
@@ -40,5 +92,3 @@ const setupWatchdog = (io) => {
 };
 
 module.exports = { setupWatchdog };
-
-

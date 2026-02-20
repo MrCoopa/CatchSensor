@@ -5,28 +5,16 @@ const sequelize = require('../config/database');
 
 exports.subscribe = async (req, res) => {
     try {
-        const subscription = req.body;
+        const { endpoint } = req.body;
         const userId = req.user.id;
 
-        if (!subscription || !subscription.endpoint) {
-            return res.status(400).json({ error: 'Invalid subscription object' });
+        if (!endpoint) {
+            return res.status(400).json({ error: 'FCM token (endpoint) required' });
         }
 
-        let sub = await PushSubscription.findOne({ where: { endpoint: subscription.endpoint } });
+        await PushSubscription.upsert({ endpoint, userId });
 
-        if (sub) {
-            sub.userId = userId;
-            sub.keys = null; // Ensure keys are always null for pure native tokens
-            await sub.save();
-        } else {
-            await PushSubscription.create({
-                endpoint: subscription.endpoint,
-                keys: null,
-                userId: userId
-            });
-        }
-
-        res.status(201).json({ message: 'Subscription saved (Native).' });
+        res.status(201).json({ message: 'Subscription saved.' });
     } catch (error) {
         console.error('Subscribe Error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -36,13 +24,11 @@ exports.subscribe = async (req, res) => {
 exports.unsubscribe = async (req, res) => {
     try {
         const { endpoint } = req.body;
-        if (!endpoint) {
-            // If no endpoint provided, we might want to clear all for this user?
-            // But let's be safe and only delete the current one.
-            return res.status(400).json({ error: 'Endpoint required' });
-        }
+        const userId = req.user.id;
+        if (!endpoint) return res.status(400).json({ error: 'Endpoint required' });
 
-        await PushSubscription.destroy({ where: { endpoint } });
+        // Only delete if it belongs to this user
+        await PushSubscription.destroy({ where: { endpoint, userId } });
         res.json({ message: 'Unsubscribed successfully' });
     } catch (error) {
         console.error('Unsubscribe Error:', error);

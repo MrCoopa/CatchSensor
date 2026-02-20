@@ -7,8 +7,13 @@ const PushSubscription = require('../models/PushSubscription');
 const LoraMetadata = require('../models/LoraMetadata');
 const { sendUnifiedNotification } = require('./notificationService');
 
+/** Convert battery voltage (mV) to percentage. Range: 3300mV (0%) → 4200mV (100%) */
+const voltageToBatteryPercent = (mV) => Math.min(100, Math.max(0, Math.floor((mV - 3300) / 9)));
+
+
 const setupMQTT = (io, aedes) => {
     // 1. Path A: Internal NB-IoT Broker (Aedes)
+
     if (aedes) {
         console.log('MQTT: ✅ Internal NB-IoT Broker active (Aedes)');
         aedes.on('publish', async (packet, client) => {
@@ -109,7 +114,7 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
                 type: 'NB-IOT',
                 status: statusByte === 0x01 ? 'active' : 'triggered',
                 batteryVoltage: voltage,
-                batteryPercent: Math.min(100, Math.max(0, Math.floor((voltage - 3300) / 9))), // Approx mapping
+                batteryPercent: voltageToBatteryPercent(voltage),
                 rssi: -rssi,
                 lastReading: new Date()
             };
@@ -160,7 +165,8 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
                     if (buffer.length >= 4) {
                         batteryPercent = buffer.readUInt8(3);
                     } else {
-                        batteryPercent = Math.min(100, Math.max(0, Math.floor((voltage - 3300) / 9)));
+                        batteryPercent = voltageToBatteryPercent(voltage);
+
                     }
                 }
             }

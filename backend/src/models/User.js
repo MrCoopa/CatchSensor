@@ -48,15 +48,15 @@ const User = sequelize.define('User', {
     },
     batteryAlertInterval: {
         type: DataTypes.INTEGER,
-        defaultValue: 24, // hours
+        defaultValue: 8, // hours between battery alerts
     },
     offlineAlertInterval: {
         type: DataTypes.INTEGER,
-        defaultValue: 24, // hours
+        defaultValue: 8, // hours between offline alerts
     },
     catchAlertInterval: {
         type: DataTypes.INTEGER,
-        defaultValue: 1, // hours
+        defaultValue: 3, // hours between triggered (catch) re-alerts
     }
 }, {
 
