@@ -15,7 +15,6 @@ const setupMQTT = (io, aedes) => {
     // 1. Path A: Internal NB-IoT Broker (Aedes)
 
     if (aedes) {
-        console.log('MQTT: ✅ Internal NB-IoT Broker active (Aedes)');
         aedes.on('publish', async (packet, client) => {
             if (packet.topic.startsWith('$SYS')) return; // Ignore system topics
             console.log(`MQTT: 📥 Internal Broker received publish on: ${packet.topic}`);
@@ -41,13 +40,13 @@ const setupMQTT = (io, aedes) => {
     if (process.env.TTN_MQTT_USER) {
         const ttnPort = process.env.TTN_MQTT_PORT || 1883;
         const protocol = ttnPort == 8883 ? 'mqtts' : 'mqtt';
+        const brokerUrl = `${protocol}://${process.env.TTN_MQTT_BROKER || 'eu1.cloud.thethings.network'}:${ttnPort}`;
 
-        console.log(`MQTT: 🔍 TTN Config Check - User: ${process.env.TTN_MQTT_USER?.substring(0, 5)}..., Pass-Length: ${process.env.TTN_MQTT_PASS?.length}, Port: ${ttnPort}, Proto: ${protocol}`);
+        console.log(`MQTT: 🔍 TTN Config Check - User: ${process.env.TTN_MQTT_USER?.substring(0, 5)}..., Pass-Length: ${process.env.TTN_MQTT_PASS?.length}, URL: ${brokerUrl}`);
 
         connectToBroker({
             name: 'LoRaWAN (TTN)',
-            url: `${protocol}://${process.env.TTN_MQTT_BROKER || 'eu1.cloud.thethings.network'}`,
-            port: ttnPort,
+            url: brokerUrl,
             username: process.env.TTN_MQTT_USER,
             password: process.env.TTN_MQTT_PASS,
             topic: '#' // Use wildcard as specific topics are being rejected
@@ -66,7 +65,6 @@ const setupMQTT = (io, aedes) => {
 const connectToBroker = (config, onMessage) => {
     console.log(`MQTT: Connecting to ${config.name} Broker: ${config.url}`);
     const client = mqtt.connect(config.url, {
-        port: config.port,
         username: config.username,
         password: config.password,
     });
@@ -81,7 +79,7 @@ const connectToBroker = (config, onMessage) => {
 
     client.on('packetreceive', (packet) => {
         if (packet.cmd === 'publish') {
-            console.log(`MQTT: DEBUG - Packet received on topic: ${packet.topic}`);
+            // Keep minimal for production
         }
     });
 
@@ -324,4 +322,3 @@ const updateCatchSensorData = async (deviceId, data, io) => {
 
 
 module.exports = { setupMQTT };
-
