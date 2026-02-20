@@ -97,16 +97,20 @@ aedes.on('client', (client) => {
     console.log(`MQTT Broker: 🟢 Client CONNECTED (Full): ${client ? client.id : 'unknown'}`);
 });
 
+aedes.on('clientReady', (client) => {
+    console.log(`MQTT Broker: ✨ Client READY: ${client ? client.id : 'unknown'}`);
+});
+
 aedes.on('clientDisconnect', (client) => {
     console.log(`MQTT Broker: 🔴 Client DISCONNECTED: ${client ? client.id : 'unknown'}`);
 });
 
 aedes.on('clientError', (client, err) => {
-    console.log(`MQTT Broker: ⚠️ Client Error: ${client ? client.id : 'unknown'} - ${err.message}`);
+    console.warn(`MQTT Broker: ⚠️ Client Error: ${client ? client.id : 'unknown'} - ${err.message}`, err);
 });
 
 aedes.on('connectionError', (client, err) => {
-    console.log(`MQTT Broker: ❌ Connection Error: ${err.message}`);
+    console.error(`MQTT Broker: ❌ Connection Error: ${err.message}`, err);
 });
 
 aedes.on('publish', (packet, client) => {
@@ -120,6 +124,21 @@ aedes.on('connackSent', (client) => {
 aedes.on('ack', (packet, client) => {
     console.log(`MQTT Broker: ✅ ACK for packet from ${client ? client.id : 'unknown'}`);
 });
+
+aedes.preConnect = (client, packet, done) => {
+    console.log(`MQTT Broker: ⏳ [1] Pre-connect attempt...`);
+    done(null, true);
+};
+
+aedes.authorizePublish = (client, packet, callback) => {
+    console.log(`MQTT Broker: 📝 [3] Authorizing publish from ${client ? client.id : 'unknown'} on ${packet.topic}`);
+    callback(null);
+};
+
+aedes.authorizeSubscribe = (client, sub, callback) => {
+    console.log(`MQTT Broker: 📝 [3] Authorizing subscribe from ${client ? client.id : 'unknown'} for ${sub.topic}`);
+    callback(null, sub);
+};
 
 const setupEmbeddedBroker = (io) => {
     // 1. Raw TCP MQTT Server (Port 1884)
