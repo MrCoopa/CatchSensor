@@ -30,6 +30,7 @@
  *   --jitter   Add random variation to voltage/rssi  (flag)
  *   --user     MQTT Username
  *   --pass     MQTT Password
+ *   --version  MQTT Protocol version (4=3.1.1, 5=5.0) (default: 4)
  */
 
 const mqtt = require('mqtt');
@@ -51,6 +52,7 @@ let BROKER_PORT = parseInt(args.port || '1884');
 let BROKER_HOST = args.host || null;
 let BROKER_USER = args.user || null;
 let BROKER_PASS = args.pass || null;
+let MQTT_VERSION = parseInt(args.version || '4');
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const buildPayload = (status, voltageMv, rssiAbs) => {
@@ -127,12 +129,14 @@ const connectToBroker = () => new Promise((resolve, reject) => {
     const options = {
         username: BROKER_USER,
         password: BROKER_PASS,
-        protocolVersion: 4, // Force MQTT 3.1.1 for maximum compatibility with Aedes v1.0
-        connectTimeout: 10000
+        protocolVersion: MQTT_VERSION,
+        connectTimeout: 15000,
+        clientId: `catchsensor_sim_${Math.random().toString(16).slice(2, 8)}`
     };
 
     const client = mqtt.connect(connectionUrl, options);
 
+    console.log(dim(`  [Protocol: MQTT ${MQTT_VERSION === 5 ? '5.0' : '3.1.1'}]`));
     console.log(dim(`  Attempting connection to ${connectionUrl}...`));
 
     const timeout = setTimeout(() => {

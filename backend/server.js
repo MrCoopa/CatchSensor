@@ -94,11 +94,11 @@ if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
 
 // Aedes event logging
 aedes.on('client', (client) => {
-    console.log(`MQTT Broker: 🟢 New Client connected: ${client ? client.id : 'unknown'}`);
+    console.log(`MQTT Broker: 🟢 Client CONNECTED (Full): ${client ? client.id : 'unknown'}`);
 });
 
 aedes.on('clientDisconnect', (client) => {
-    console.log(`MQTT Broker: 🔴 Client disconnected: ${client ? client.id : 'unknown'}`);
+    console.log(`MQTT Broker: 🔴 Client DISCONNECTED: ${client ? client.id : 'unknown'}`);
 });
 
 aedes.on('clientError', (client, err) => {
@@ -114,9 +114,17 @@ aedes.on('publish', (packet, client) => {
 });
 
 aedes.preConnect = (client, packet, done) => {
-    console.log(`MQTT Broker: ⏳ Pre-connect from client: ${client ? client.id : 'unknown'}`);
+    console.log(`MQTT Broker: ⏳ Pre-connect attempt...`);
     done(null, true);
 };
+
+aedes.on('connackSent', (client) => {
+    console.log(`MQTT Broker: 📤 CONNACK sent to ${client ? client.id : 'unknown'}`);
+});
+
+aedes.on('keepaliveTimeout', (client) => {
+    console.log(`MQTT Broker: ⏳ Keep-alive timeout for ${client ? client.id : 'unknown'}`);
+});
 
 // aedes.on('subscribe', (subs, client) => {
 //     console.log(`MQTT Broker: Client ${client ? client.id : 'unknown'} subscribed to ${subs.map(s => s.topic).join(', ')}`);
