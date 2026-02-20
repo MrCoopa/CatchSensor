@@ -12,7 +12,8 @@ const User = sequelize.define('User', {
     email: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        // Do NOT use unique: true here — it creates anonymous indexes that accumulate on every sync({ alter: true }).
+        // Use a named index in the model options below instead.
         validate: {
             isEmail: true,
         },
@@ -59,7 +60,13 @@ const User = sequelize.define('User', {
         defaultValue: 3, // hours between triggered (catch) re-alerts
     }
 }, {
-
+    indexes: [
+        {
+            unique: true,
+            fields: ['email'],
+            name: 'users_email_unique'  // Named — Sequelize won't create duplicates
+        }
+    ],
     hooks: {
         beforeSave: async (user) => {
             if (user.changed('password')) {
