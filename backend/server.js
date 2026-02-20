@@ -64,41 +64,32 @@ process.on('unhandledRejection', (reason, promise) => {
 const { Aedes } = require('aedes');
 const aedes = new Aedes();
 
-// 1. Stage: Pre-Connect (Signature: client, packet, callback)
-aedes.preConnect = function (client, packet, callback) {
-    console.log(`MQTT: ⏳ [1] Pre-connect attempt...`);
+// --- THE ULTIMATE TRACER ---
+// Log EVERY event that happens inside Aedes to find the "dead end"
+[
+    'client', 'clientReady', 'clientDisconnect', 'clientError',
+    'connectionError', 'keepaliveTimeout', 'publish', 'subscribe',
+    'unsubscribe', 'ack', 'ping', 'connackSent', 'closed'
+].forEach(event => {
+    aedes.on(event, (arg1, arg2) => {
+        let details = '';
+        if (arg1 && arg1.id) details = `(Client: ${arg1.id})`;
+        else if (arg1 && arg1.cmd) details = `(CMD: ${arg1.cmd})`;
+        console.log(`MQTT: 🔍 Event [${event}] ${details}`);
+        if (event.includes('Error')) console.error(`MQTT: ❌ ${event} details:`, arg2 || arg1);
+    });
+});
+
+// Bare-bones hooks
+aedes.preConnect = (client, packet, callback) => {
+    console.log(`MQTT: ⏳ [Stage 1] Pre-connect via ${client.id || 'initial'}`);
     callback(null, true);
 };
 
-// 2. Stage: Authentication
-const INTERNAL_MQTT_USER = process.env.INTERNAL_MQTT_USER;
-const INTERNAL_MQTT_PASS = process.env.INTERNAL_MQTT_PASS;
-
-aedes.authenticate = function (client, username, password, callback) {
-    if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
-        const authorized = (username === INTERNAL_MQTT_USER && password?.toString() === INTERNAL_MQTT_PASS);
-        if (authorized) {
-            console.log(`MQTT: ✅ [2] Auth Success: ${client.id}`);
-            callback(null, true);
-        } else {
-            console.warn(`MQTT: ❌ [2] Auth Failed: ${client.id}`);
-            const error = new Error('Auth error');
-            error.returnCode = 4;
-            callback(error, null);
-        }
-    } else {
-        console.log(`MQTT: � [2] Connection (no auth): ${client.id}`);
-        callback(null, true);
-    }
+aedes.authenticate = (client, username, password, callback) => {
+    console.log(`MQTT: 🔐 [Stage 2] Authenticating: ${client.id}`);
+    callback(null, true);
 };
-
-// 3. Stage: Events
-aedes.on('clientReady', (client) => console.log(`MQTT: ✨ [3] Client READY: ${client.id}`));
-aedes.on('connackSent', (client) => console.log(`MQTT: � [4] CONNACK sent: ${client ? client.id : 'unknown'}`));
-
-aedes.on('clientDisconnect', (client) => console.log(`MQTT: 🔴 Client Disconnected: ${client ? client.id : 'unknown'}`));
-aedes.on('clientError', (client, err) => console.warn(`MQTT: ⚠️ Client Error: ${err.message}`));
-aedes.on('connectionError', (client, err) => console.error(`MQTT: ❌ Connection Error: ${err.message}`));
 
 const setupEmbeddedBroker = (io) => {
     const net = require('net');
@@ -106,8 +97,8 @@ const setupEmbeddedBroker = (io) => {
 
     // TCP Server (1884)
     const mqttServer = net.createServer((socket) => {
-        console.log(`MQTT: 📶 Incoming connection from ${socket.remoteAddress}`);
-        socket.on('error', (err) => console.error('MQTT: Socket Error:', err.message));
+        console.log(`MQTT: 📶 [Stage 0] TCP Connection from ${socket.remoteAddress}`);
+        socket.on('error', (err) => console.error('MQTT: [Socket Error]:', err.message));
         aedes.handle(socket);
     });
 
@@ -121,6 +112,7 @@ const setupEmbeddedBroker = (io) => {
     });
 
     wsServer.on('connection', (socket) => {
+        console.log('MQTT: 📶 [Stage 0] WS Connection');
         const stream = ws.createWebSocketStream(socket);
         aedes.handle(stream);
     });
