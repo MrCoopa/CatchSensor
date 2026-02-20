@@ -84,6 +84,11 @@ if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
     };
     console.log('MQTT Broker: 🔒 Authentication enabled for embedded broker.');
 } else {
+    // Log even when no auth is required to see progress
+    aedes.authenticate = (client, username, password, callback) => {
+        console.log(`MQTT Broker: 🔓 Connection attempt (no auth): ${client.id} (Username: ${username || 'none'})`);
+        callback(null, true);
+    };
     console.log('MQTT Broker: ⚠️ No authentication set for embedded broker (INTERNAL_MQTT_USER/PASS not set).');
 }
 
