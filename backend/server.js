@@ -83,30 +83,32 @@ aedes.authenticate = function (client, username, password, callback) {
         }
     } else {
         // No auth required
+        console.log(`MQTT: Connection allowed (no auth) for ${client.id}`);
         callback(null, true);
     }
 };
 
 // Simplified event logging
-aedes.on('client', (client) => console.log(`MQTT: Client Connected: ${client.id}`));
-aedes.on('clientReady', (client) => console.log(`MQTT: Client Ready: ${client.id}`));
-aedes.on('clientDisconnect', (client) => console.log(`MQTT: Client Disconnected: ${client.id}`));
-aedes.on('clientError', (client, err) => console.log(`MQTT: Client Error (${client ? client.id : 'unknown'}): ${err.message}`));
-aedes.on('connectionError', (client, err) => console.log(`MQTT: Connection Error: ${err.message}`));
-aedes.on('connackSent', (client) => console.log(`MQTT: CONNACK Sent: ${client ? client.id : 'unknown'}`));
+aedes.on('client', (client) => console.log(`MQTT: 🟢 Client Connected: ${client.id}`));
+aedes.on('clientReady', (client) => console.log(`MQTT: ✨ Client Ready: ${client.id}`));
+aedes.on('clientDisconnect', (client) => console.log(`MQTT: 🔴 Client Disconnected: ${client.id}`));
+aedes.on('clientError', (client, err) => console.log(`MQTT: ⚠️ Client Error (${client ? client.id : 'unknown'}): ${err.message}`));
+aedes.on('connectionError', (client, err) => console.log(`MQTT: ❌ Connection Error: ${err.message}`));
+aedes.on('connackSent', (client) => console.log(`MQTT: 📤 CONNACK Sent: ${client ? client.id : 'unknown'}`));
+
+// Correct signature for Aedes 1.x preConnect (3 arguments)
+// We log the raw packet here to avoid interfering with the TCP stream
+aedes.preConnect = function (client, packet, callback) {
+    if (packet && packet.cmd === 'connect') {
+        console.log(`MQTT: ⏳ [1] Pre-connect from ${packet.clientId || 'unknown'}`);
+    }
+    callback(null, true);
+};
 
 const setupEmbeddedBroker = (io) => {
-    const net = require('net');
-
     // 1. Raw TCP MQTT Server (Port 1884)
-    // We use a raw net server to log diagnostic data before handing over to Aedes
-    const mqttServer = net.createServer((socket) => {
-        socket.once('data', (chunk) => {
-            console.log(`MQTT: 📥 Incoming TCP Data (First 16 bytes): ${chunk.slice(0, 16).toString('hex')} [${chunk.slice(0, 16).toString('ascii').replace(/[^\x20-\x7E]/g, '.')}]`);
-        });
-        aedes.handle(socket);
-    });
-
+    const net = require('net');
+    const mqttServer = net.createServer(aedes.handle);
     mqttServer.on('error', (err) => console.error('MQTT Server TCP Error:', err));
     mqttServer.listen(1884, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
