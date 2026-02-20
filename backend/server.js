@@ -65,6 +65,28 @@ const { Aedes } = require('aedes');
 const aedes = new Aedes();
 const aedesServerFactory = require('aedes-server-factory');
 
+// Embedded Broker Authentication Logic
+const INTERNAL_MQTT_USER = process.env.INTERNAL_MQTT_USER;
+const INTERNAL_MQTT_PASS = process.env.INTERNAL_MQTT_PASS;
+
+if (INTERNAL_MQTT_USER && INTERNAL_MQTT_PASS) {
+    aedes.authenticate = (client, username, password, callback) => {
+        const authorized = (username === INTERNAL_MQTT_USER && password.toString() === INTERNAL_MQTT_PASS);
+        if (authorized) {
+            console.log(`MQTT Broker: Client auth success: ${client.id}`);
+            callback(null, true);
+        } else {
+            console.warn(`MQTT Broker: Client auth FAILED: ${client.id} (Username: ${username})`);
+            const error = new Error('Auth error');
+            error.returnCode = 4; // Connection Refused: Bad user name or password
+            callback(error, null);
+        }
+    };
+    console.log('MQTT Broker: 🔒 Authentication enabled for embedded broker.');
+} else {
+    console.log('MQTT Broker: ⚠️ No authentication set for embedded broker (NBIOT_MQTT_USER/PASS not set).');
+}
+
 // Aedes event logging (Commented out for production)
 // aedes.on('client', (client) => {
 //     console.log(`MQTT Broker: New Client detected: ${client ? client.id : 'unknown'}`);

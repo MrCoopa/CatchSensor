@@ -268,6 +268,8 @@ File: `.env` in project root
 | `DB_NAME` | ✅ | Database name |
 | `JWT_SECRET` | ✅ | JWT signing secret — **change in production!** |
 | `VITE_API_URL` | ✅ | Full URL backend (e.g. `https://catchsensor.home`) |
+| `INTERNAL_MQTT_USER` | Username for embedded broker (optional) | `ub-iot-user` |
+| `INTERNAL_MQTT_PASS` | Password for embedded broker (optional) | `secret123` |
 | `APP_BASE_URL` | ✅ | Same as above, used server-side |
 | `FIREBASE_SERVICE_ACCOUNT_B64` | ✅ (Docker) | Base64-encoded `serviceAccountKey.json` for FCM |
 | `TTN_MQTT_BROKER` | ⚙️ | TTN MQTT broker hostname |

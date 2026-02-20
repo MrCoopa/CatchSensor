@@ -28,6 +28,8 @@
  *   --repeat   Number of times to send  (default: 1)
  *   --interval Seconds between repeats  (default: 5)
  *   --jitter   Add random variation to voltage/rssi  (flag)
+ *   --user     MQTT Username
+ *   --pass     MQTT Password
  */
 
 const mqtt = require('mqtt');
@@ -47,6 +49,8 @@ let BROKER_PORT = parseInt(args.port || '1884');
 
 // Host is either passed via --host, or prompted interactively
 let BROKER_HOST = args.host || null;
+let BROKER_USER = args.user || null;
+let BROKER_PASS = args.pass || null;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const buildPayload = (status, voltageMv, rssiAbs) => {
@@ -116,7 +120,12 @@ const connectToBroker = () => new Promise((resolve, reject) => {
         connectionUrl = `${url}:${BROKER_PORT}`;
     }
 
-    const client = mqtt.connect(connectionUrl);
+    const options = {
+        username: BROKER_USER,
+        password: BROKER_PASS
+    };
+
+    const client = mqtt.connect(connectionUrl, options);
 
     const timeout = setTimeout(() => {
         client.end();
@@ -198,6 +207,20 @@ const runInteractive = async () => {
             rl1.question(`  Broker Port ${dim('[1884]')}: `, (a) => { rl1.close(); resolve(a.trim()); })
         );
         if (portInput) BROKER_PORT = parseInt(portInput);
+        console.log('');
+
+        // Optional auth
+        const userIn = await new Promise(r => {
+            const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+            rl.question(`  Username ${dim('(optional)')}: `, a => { rl.close(); r(a.trim()); });
+        });
+        if (userIn) {
+            BROKER_USER = userIn;
+            BROKER_PASS = await new Promise(r => {
+                const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+                rl.question(`  Password: `, a => { rl.close(); r(a.trim()); });
+            });
+        }
         console.log('');
     }
 
