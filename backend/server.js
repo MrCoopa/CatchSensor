@@ -88,7 +88,7 @@ aedes.on('clientReady', (client) => console.log(`MQTT: ✨ Client Ready: ${clien
 aedes.on('clientDisconnect', (client) => console.log(`MQTT: 🔴 Client Disconnected: ${client.id}`));
 aedes.on('clientError', (client, err) => console.warn(`MQTT: ⚠️ Client Error (${client.id}): ${err.message}`));
 aedes.on('connectionError', (client, err) => console.error(`MQTT: ❌ Connection Error: ${err.message}`));
-aedes.on('connackSent', (client) => console.log(`MQTT: 📤 CONNACK Sent: ${client.id}`));
+aedes.on('connackSent', (connack, client) => console.log(`MQTT: 📤 CONNACK Sent: ${client ? client.id : 'connecting'}`));
 
 const setupEmbeddedBroker = (io) => {
     const net = require('net');
