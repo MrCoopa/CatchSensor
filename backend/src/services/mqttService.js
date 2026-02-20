@@ -239,10 +239,11 @@ const updateCatchSensorData = async (deviceId, data, io) => {
         // 1. Update Core Fields
         catchSensor.type = data.type;
 
-        // Only clear acknowledgment on a genuine new catch event (status transition).
-        // Repeated 'triggered' packets from the same event must NOT clear the acknowledgment
-        // so the UI correctly shows the sensor as already-acknowledged.
-        if (data.status === 'triggered' && catchSensor.status !== 'triggered') {
+        // Clear acknowledgment when a new trigger event deserves a fresh alarm:
+        // Case 1: Status transition (active → triggered) = a new catch event
+        // Case 2: lastCatchAlert is null = sensor was just acknowledged, next trigger means new catch
+        if (data.status === 'triggered' &&
+            (catchSensor.status !== 'triggered' || catchSensor.lastCatchAlert === null)) {
             catchSensor.alarmAcknowledgedAt = null;
         }
 
