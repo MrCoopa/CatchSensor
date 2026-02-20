@@ -166,8 +166,6 @@ const runCLI = async () => {
         process.exit(1);
     }
 
-    console.log(dim(`  Broker: mqtt://${BROKER_HOST}:${BROKER_PORT}\n`));
-
     let client;
     try {
         client = await connectToBroker();
@@ -226,12 +224,10 @@ const runInteractive = async () => {
 
     let client;
     try {
-        process.stdout.write(`  Connecting to mqtt://${BROKER_HOST}:${BROKER_PORT}...`);
         client = await connectToBroker();
     } catch (err) {
-        process.stdout.write('\n');
         console.error(red(`  ✗ ${err.message}`));
-        console.log(dim('  Make sure the CatchSensor backend is running.\n'));
+        console.log(dim('  Make sure the CatchSensor backend is running (check Port 1884/1885).\n'));
         process.exit(1);
     }
 
