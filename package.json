@@ -20,6 +20,7 @@
   "homepage": "https://github.com/MrCoopa/CatchSensor#readme",
   "dependencies": {
     "aedes": "^0.50.0",
+    "websocket-stream": "^5.5.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

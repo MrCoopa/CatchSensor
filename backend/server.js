@@ -100,14 +100,11 @@ const setupEmbeddedBroker = (io) => {
         console.log('✅ Embedded MQTT Broker (TCP) running on 0.0.0.0:1884');
     });
 
-    // WebSocket Server (Port 1885)
-    const wsServer = new ws.Server({ port: 1885, host: '0.0.0.0' }, () => {
+    // WebSocket Server (Port 1885) — using websocket-stream as per Aedes 0.x docs
+    const wsServer = require('http').createServer();
+    require('websocket-stream').createServer({ server: wsServer }, aedes.handle);
+    wsServer.listen(1885, '0.0.0.0', () => {
         console.log('✅ Embedded MQTT Broker (WS) running on 0.0.0.0:1885');
-    });
-
-    wsServer.on('connection', (socket) => {
-        const stream = ws.createWebSocketStream(socket);
-        aedes.handle(stream);
     });
 
     // Load MQTT business logic
