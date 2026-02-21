@@ -1,3 +1,4 @@
+const logger = require('./src/utils/logger'); // Import first to capture startup logs
 const path = require('path');
 const dotenv = require('dotenv');
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') }); // Load centralized .env from root
@@ -249,8 +250,25 @@ app.get('/status', (req, res) => {
                     <div class="absolute -right-20 -bottom-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
                 </div>
 
-                <footer class="text-center text-slate-400 text-sm font-medium pt-8">
-                    Letztes Update: <span id="last-update" class="text-slate-900 font-bold">-</span>
+                <footer>
+                    <div class="mt-8">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Backend Logs</h2>
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Live</span>
+                            </div>
+                        </div>
+                        <div id="log-container" class="bg-[#0f172a] rounded-3xl p-6 shadow-2xl border border-slate-800 font-mono text-[11px] h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
+                            <div id="log-content" class="space-y-1.5 opacity-0 transition-opacity duration-500">
+                                <div class="text-slate-500 italic">Initialisiere Log-Stream...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-center text-slate-400 text-sm font-medium pt-8">
+                        Letztes Update: <span id="last-update" class="text-slate-900 font-bold">-</span>
+                    </p>
                 </footer>
             </div>
 
@@ -301,6 +319,27 @@ app.get('/status', (req, res) => {
                         document.getElementById('server-uptime').innerText = Math.floor(data.server.uptime / 60) + 'm ' + Math.floor(data.server.uptime % 60) + 's';
                         document.getElementById('last-update').innerText = new Date(data.timestamp).toLocaleTimeString('de-DE');
 
+                        // Update Logs
+                        const logContent = document.getElementById('log-content');
+                        const logContainer = document.getElementById('log-container');
+                        const isAtBottom = logContainer.scrollHeight - logContainer.scrollTop <= logContainer.clientHeight + 50;
+
+                        if (data.logs && data.logs.length > 0) {
+                            logContent.innerHTML = data.logs.map(log => {
+                                let colorClass = 'text-slate-300';
+                                if (log.includes('[ERROR]')) colorClass = 'text-red-400 font-bold';
+                                else if (log.includes('[WARN]')) colorClass = 'text-yellow-400';
+                                else if (log.includes('[INFO]')) colorClass = 'text-blue-400';
+                                
+                                return \`<div class="\${colorClass}">\${log}</div>\`;
+                            }).join('');
+                            logContent.classList.remove('opacity-0');
+
+                            if (isAtBottom) {
+                                logContainer.scrollTop = logContainer.scrollHeight;
+                            }
+                        }
+
                     } catch (err) {
                         console.error('Update failed:', err);
                     }
@@ -336,6 +375,7 @@ app.get('/api/status', async (req, res) => {
                 totalCatches: catchCount,
                 totalReadings: readingCount
             },
+            logs: logger.getLogs(),
             visualDashboard: process.env.APP_BASE_URL || 'http://localhost:5000/'
         });
     } catch (err) {
@@ -448,4 +488,3 @@ async function startServer() {
 }
 
 startServer();
-
