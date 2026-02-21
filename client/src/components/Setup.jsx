@@ -29,6 +29,7 @@ const Setup = ({ onLogout }) => {
     const [offlineAlertInterval, setOfflineAlertInterval] = useState(8);
     const [catchAlertInterval, setCatchAlertInterval] = useState(3);
     const [showPushover, setShowPushover] = useState(false);
+    const [notifPermission, setNotifPermission] = useState('default');
     const [showDebug, setShowDebug] = useState(false);
 
 
@@ -76,6 +77,35 @@ const Setup = ({ onLogout }) => {
 
 
     // Simplified notification logic (automations happen in App.jsx)
+
+    useEffect(() => {
+        // Check current permission status on every mount
+        if (Capacitor.isNativePlatform()) {
+            PushNotifications.checkPermissions().then(result => {
+                setNotifPermission(result.receive);
+            }).catch(() => { });
+        }
+    }, []);
+
+    const handleRequestPermission = async () => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const result = await PushNotifications.requestPermissions();
+                setNotifPermission(result.receive);
+                if (result.receive === 'granted') {
+                    PushNotifications.register();
+                    setStatusMessage({ text: 'Native Push-Berechtigung erteilt! 🚀', type: 'success' });
+                } else {
+                    setStatusMessage({ text: 'Native Push-Berechtigung abgelehnt.', type: 'error' });
+                }
+            } catch (e) {
+                console.error('Permission request failed', e);
+                setStatusMessage({ text: 'Fehler bei Berechtigungsanfrage: ' + e.message, type: 'error' });
+            }
+            return;
+        }
+        setStatusMessage({ text: 'Bitte nutzen Sie die App für Benachrichtigungen.', type: 'error' });
+    };
 
     const handleClearPushSubscriptions = async () => {
         if (!confirm('Möchten Sie wirklich alle Benachrichtigungs-Abos für dieses Konto löschen?')) return;
