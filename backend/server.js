@@ -129,11 +129,20 @@ app.use(cors({
     origin: function (origin, callback) {
         // allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost') || origin.startsWith('capacitor://localhost')) {
+
+        // Standard allowed origins from .env
+        if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+
+        // Support local IPs automatically (192.168.x.x, capacitor://localhost, http://localhost)
+        if (
+            origin.startsWith('http://192.168.') ||
+            origin.startsWith('http://localhost') ||
+            origin.startsWith('capacitor://localhost')
+        ) {
             return callback(null, true);
         }
-        callback(new Error(`CORS: Origin ${origin} not allowed`));
 
+        callback(new Error(`CORS: Origin ${origin} not allowed`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -469,9 +478,8 @@ async function startServer() {
             console.log('--- Server Status ---');
             console.log(`Server: Running on port ${PORT}`);
             console.log(`Mode: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`Connectivity Mode: ${process.env.VITE_CONNECTIVITY_MODE || 'Default (IP)'}`);
-            console.log(`API URL (IP): ${process.env.VITE_API_URL_IP || 'Not Set'}`);
-            console.log(`API URL (DNS): ${process.env.VITE_API_URL_DNS || 'Not Set'}`);
+            console.log(`Connectivity Mode: ${process.env.VITE_CONNECTIVITY_MODE || 'IP (Auto-Local)'}`);
+            console.log('CORS: 🌐 Automated Local Network Access (192.168.x.x) ENABLED');
             console.log('-----------------------');
 
             // Start Background Services AFTER server is ready and DB is synced
