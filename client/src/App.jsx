@@ -17,12 +17,20 @@ function App() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // 1. Initial permission check & registration if already granted
-    PushNotifications.checkPermissions().then(result => {
+    // 1. Initial permission check & registration
+    const initPush = async () => {
+      const result = await PushNotifications.checkPermissions();
       if (result.receive === 'granted') {
         PushNotifications.register();
+      } else if (result.receive === 'prompt' || result.receive === 'default') {
+        // Automatically request if not yet decided
+        const requestResult = await PushNotifications.requestPermissions();
+        if (requestResult.receive === 'granted') {
+          PushNotifications.register();
+        }
       }
-    });
+    };
+    initPush();
 
     // 2. Listeners
     const registrationListener = PushNotifications.addListener('registration', async (token) => {

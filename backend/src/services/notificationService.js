@@ -77,19 +77,17 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
         }
 
         // ── 1. Native Push (FCM via Capacitor) ──────────────────────────────────
-        if (user.pushEnabled !== false) {
-            const subscriptions = await PushSubscription.findAll({ where: { userId: user.id } });
-            for (const sub of subscriptions) {
-                try {
-                    console.log(`NotificationEngine: Sending FCM to ${sub.endpoint.substring(0, 15)}...`);
-                    await sendNativeNotification(sub.endpoint, notificationTitle, messageText, {
-                        url: `/catch/${catchSensor.id}`,
-                        catchId: catchSensor.id ? catchSensor.id.toString() : '',
-                        type
-                    });
-                } catch (err) {
-                    console.error('NotificationEngine: FCM send failed for sub:', sub.id, err.message);
-                }
+        const subscriptions = await PushSubscription.findAll({ where: { userId: user.id } });
+        for (const sub of subscriptions) {
+            try {
+                console.log(`NotificationEngine: Sending FCM to ${sub.endpoint.substring(0, 15)}...`);
+                await sendNativeNotification(sub.endpoint, notificationTitle, messageText, {
+                    url: `/catch/${catchSensor.id}`,
+                    catchId: catchSensor.id ? catchSensor.id.toString() : '',
+                    type
+                });
+            } catch (err) {
+                console.error('NotificationEngine: FCM send failed for sub:', sub.id, err.message);
             }
         }
 

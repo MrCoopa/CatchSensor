@@ -29,7 +29,6 @@ const Setup = ({ onLogout }) => {
     const [offlineAlertInterval, setOfflineAlertInterval] = useState(8);
     const [catchAlertInterval, setCatchAlertInterval] = useState(3);
     const [showPushover, setShowPushover] = useState(false);
-    const [notifPermission, setNotifPermission] = useState('default');
     const [showDebug, setShowDebug] = useState(false);
 
 
@@ -76,36 +75,7 @@ const Setup = ({ onLogout }) => {
 
 
 
-    useEffect(() => {
-        // Check current permission status on every mount
-        if (Capacitor.isNativePlatform()) {
-            PushNotifications.checkPermissions().then(result => {
-                setNotifPermission(result.receive);
-            }).catch(() => { });
-        }
-    }, []);
-
-
-
-    const handleRequestPermission = async () => {
-        if (Capacitor.isNativePlatform()) {
-            try {
-                const result = await PushNotifications.requestPermissions();
-                setNotifPermission(result.receive);
-                if (result.receive === 'granted') {
-                    PushNotifications.register();
-                    setStatusMessage({ text: 'Native Push-Berechtigung erteilt! 🚀', type: 'success' });
-                } else {
-                    setStatusMessage({ text: 'Native Push-Berechtigung abgelehnt.', type: 'error' });
-                }
-            } catch (e) {
-                console.error('Permission request failed', e);
-                setStatusMessage({ text: 'Fehler bei Berechtigungsanfrage: ' + e.message, type: 'error' });
-            }
-            return;
-        }
-        setStatusMessage({ text: 'Bitte nutzen Sie die App für Benachrichtigungen.', type: 'error' });
-    };
+    // Simplified notification logic (automations happen in App.jsx)
 
     const handleClearPushSubscriptions = async () => {
         if (!confirm('Möchten Sie wirklich alle Benachrichtigungs-Abos für dieses Konto löschen?')) return;
@@ -117,7 +87,6 @@ const Setup = ({ onLogout }) => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                setPushEnabled(false);
                 setStatusMessage({ text: 'Alle Push-Abos wurden gelöscht. ✅', type: 'success' });
             } else {
                 setStatusMessage({ text: 'Fehler beim Löschen der Abos.', type: 'error' });
@@ -153,7 +122,7 @@ const Setup = ({ onLogout }) => {
                 setBatteryAlertInterval(userData.batteryAlertInterval || 24);
                 setOfflineAlertInterval(userData.offlineAlertInterval || 24);
                 setCatchAlertInterval(userData.catchAlertInterval || 1);
-                if (userData.pushEnabled !== undefined) setPushEnabled(userData.pushEnabled);
+                if (userData.pushEnabled !== undefined) { /* ignore, always enabled now */ }
 
 
             }
@@ -186,9 +155,6 @@ const Setup = ({ onLogout }) => {
                     pushoverAppKey,
                     pushoverUserKey,
                     batteryThreshold,
-                    pushEnabled,
-                    batteryAlertInterval,
-                    offlineAlertInterval,
                     catchAlertInterval
                 })
 
@@ -383,47 +349,6 @@ const Setup = ({ onLogout }) => {
 
 
 
-    const togglePush = async () => {
-        if (!Capacitor.isNativePlatform()) {
-            setStatusMessage({ text: 'Bitte nutzen Sie die App für Benachrichtigungen.', type: 'error' });
-            return;
-        }
-
-        const newStatus = !pushEnabled;
-        setPushEnabled(newStatus);
-
-        if (newStatus) {
-            setStatusMessage({ text: 'Fordere Native Push an...', type: '' });
-            const permDetails = await PushNotifications.requestPermissions();
-            if (permDetails.receive === 'granted') {
-                PushNotifications.register();
-            } else {
-                setPushEnabled(false);
-                setStatusMessage({ text: 'Push-Berechtigung abgelehnt.', type: 'error' });
-                return;
-            }
-        }
-
-        // Persist immediately to backend
-        try {
-            const token = localStorage.getItem('token');
-            await fetch(`${API_BASE}/api/auth/update-profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ pushEnabled: newStatus })
-            });
-            console.log('Setup: pushEnabled persisted to backend:', newStatus);
-        } catch (err) {
-            console.error('Setup: Failed to persist pushEnabled setting', err);
-        }
-    };
-
-    const [pushEnabled, setPushEnabled] = useState(false);
-
-
     const fixMe = "cleanup"; // Removing the old misplaced function definitions here
 
     if (isChangingPassword) {
@@ -519,37 +444,32 @@ const Setup = ({ onLogout }) => {
                 <section>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Benachrichtigungen</label>
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
-                        <div onClick={togglePush} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
+                        <div className="p-4 flex items-center justify-between">
                             <div className="flex items-center space-x-4">
-                                <div className={`p-2.5 rounded-2xl ${pushEnabled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                <div className="p-2.5 rounded-2xl bg-[#1b3a2e]/10 text-[#1b3a2e]">
                                     <Shield size={20} />
                                 </div>
                                 <div>
                                     <p className="text-sm font-bold text-gray-900">Push-Alarm</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Bei Fang & Batterie-Warnung</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Automatisch aktiv auf diesem Mobilgerät</p>
                                 </div>
-                            </div>
-                            <div className={`w-12 h-7 rounded-full p-1 transition-colors ${pushEnabled ? 'bg-[#1b3a2e]' : 'bg-gray-200'}`}>
-                                <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
                         </div>
 
-                        {pushEnabled && (
-                            <div className="px-4 pb-4 flex flex-col space-y-2">
-                                <button
-                                    onClick={handleRemoteTestPush}
-                                    className="w-full py-2 bg-gray-50 text-[#1b3a2e] text-[10px] font-black uppercase tracking-widest rounded-xl border border-gray-100 hover:bg-gray-100 transition-all"
-                                >
-                                    Push-Test senden
-                                </button>
-                                <button
-                                    onClick={handleClearPushSubscriptions}
-                                    className="w-full py-2 text-gray-400 hover:text-red-500 text-[9px] font-bold uppercase tracking-wider transition-all"
-                                >
-                                    Push-Verbindung zurücksetzen
-                                </button>
-                            </div>
-                        )}
+                        <div className="px-4 pb-4 flex flex-col space-y-2">
+                            <button
+                                onClick={handleRemoteTestPush}
+                                className="w-full py-2 bg-gray-50 text-[#1b3a2e] text-[10px] font-black uppercase tracking-widest rounded-xl border border-gray-100 hover:bg-gray-100 transition-all"
+                            >
+                                Push-Test senden
+                            </button>
+                            <button
+                                onClick={handleClearPushSubscriptions}
+                                className="w-full py-2 text-gray-400 hover:text-red-500 text-[9px] font-bold uppercase tracking-wider transition-all"
+                            >
+                                Push-Verbindung zurücksetzen
+                            </button>
+                        </div>
 
                         {/* Battery Threshold Slider */}
                         <div className="p-4 space-y-3">

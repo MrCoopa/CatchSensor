@@ -54,7 +54,7 @@ exports.testNotification = async (req, res) => {
 
         if (subscriptions.length === 0) {
             return res.status(200).json({
-                message: 'Keine aktiven Push-Abos gefunden. Bitte Push-Benachrichtigungen erst aktivieren.',
+                message: 'Noch kein Gerät registriert. Bitte öffnen Sie die App einmal auf Ihrem Handy.',
                 count: 0
             });
         }
