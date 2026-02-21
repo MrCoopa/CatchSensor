@@ -5,9 +5,61 @@ import Login from './components/Login';
 import Register from './components/Register';
 import { Home, Plus, Settings } from 'lucide-react';
 
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
+import API_BASE from './apiConfig';
+
 function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'setup'
+
+  // ── Global Push Notification Logic ──────────────────────────────────────────
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    // 1. Initial permission check & registration if already granted
+    PushNotifications.checkPermissions().then(result => {
+      if (result.receive === 'granted') {
+        PushNotifications.register();
+      }
+    });
+
+    // 2. Listeners
+    const registrationListener = PushNotifications.addListener('registration', async (token) => {
+      console.log('App: Push registration success, token: ' + token.value);
+      const authToken = localStorage.getItem('token');
+      if (authToken) {
+        try {
+          await fetch(`${API_BASE}/api/notifications/subscribe`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ endpoint: token.value, keys: null })
+          });
+          console.log('App: Push token synced with backend.');
+        } catch (e) {
+          console.error('App: Failed to sync push token', e);
+        }
+      }
+    });
+
+    const errorListener = PushNotifications.addListener('registrationError', (error) => {
+      console.error('App: Push registration error: ' + JSON.stringify(error));
+    });
+
+    const notificationListener = PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('App: Push received: ' + JSON.stringify(notification));
+      // You could trigger a global toast or alert here if desired
+    });
+
+    return () => {
+      registrationListener.remove();
+      errorListener.remove();
+      notificationListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');

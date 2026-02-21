@@ -25,9 +25,9 @@ const Setup = ({ onLogout }) => {
     const [pushoverAppKey, setPushoverAppKey] = useState('');
     const [pushoverUserKey, setPushoverUserKey] = useState('');
     const [batteryThreshold, setBatteryThreshold] = useState(20);
-    const [batteryAlertInterval, setBatteryAlertInterval] = useState(24);
-    const [offlineAlertInterval, setOfflineAlertInterval] = useState(24);
-    const [catchAlertInterval, setCatchAlertInterval] = useState(1);
+    const [batteryAlertInterval, setBatteryAlertInterval] = useState(8);
+    const [offlineAlertInterval, setOfflineAlertInterval] = useState(8);
+    const [catchAlertInterval, setCatchAlertInterval] = useState(3);
     const [showPushover, setShowPushover] = useState(false);
     const [notifPermission, setNotifPermission] = useState('default');
     const [showDebug, setShowDebug] = useState(false);
@@ -83,32 +83,6 @@ const Setup = ({ onLogout }) => {
                 setNotifPermission(result.receive);
             }).catch(() => { });
         }
-
-        // Native Push Listeners
-        if (Capacitor.isNativePlatform()) {
-            PushNotifications.addListener('registration', (token) => {
-                console.log('Push registration success, token: ' + token.value);
-                setStatusMessage({ text: 'Native Push registriert! ✅', type: 'success' });
-                // Send to backend
-                registerNativePush(token.value);
-            });
-
-            PushNotifications.addListener('registrationError', (error) => {
-                console.error('Push registration error: ' + JSON.stringify(error));
-                setStatusMessage({ text: 'Fehler bei Push-Registrierung: ' + error.error, type: 'error' });
-            });
-
-            PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                console.log('Push received: ' + JSON.stringify(notification));
-                setStatusMessage({ text: `🔔 Alarm: ${notification.title}`, type: 'success' });
-            });
-        }
-
-        return () => {
-            if (Capacitor.isNativePlatform()) {
-                PushNotifications.removeAllListeners();
-            }
-        };
     }, []);
 
 
@@ -408,32 +382,6 @@ const Setup = ({ onLogout }) => {
 
 
 
-    const registerNativePush = async (fcmToken) => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_BASE}/api/notifications/subscribe`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    endpoint: fcmToken,
-                    // keys are null for native push
-                    keys: null
-                })
-            });
-
-            if (res.ok) {
-                console.log('Native Push registered with backend!');
-                setPushEnabled(true);
-            } else {
-                console.error('Backend refused native push token', res.status);
-            }
-        } catch (e) {
-            console.error('Error sending native token to backend', e);
-        }
-    };
 
     const togglePush = async () => {
         if (!Capacitor.isNativePlatform()) {
@@ -441,18 +389,35 @@ const Setup = ({ onLogout }) => {
             return;
         }
 
-        if (pushEnabled) {
-            setPushEnabled(false);
-            setStatusMessage({ text: 'Push deaktiviert (lokal).', type: '' });
-            return;
+        const newStatus = !pushEnabled;
+        setPushEnabled(newStatus);
+
+        if (newStatus) {
+            setStatusMessage({ text: 'Fordere Native Push an...', type: '' });
+            const permDetails = await PushNotifications.requestPermissions();
+            if (permDetails.receive === 'granted') {
+                PushNotifications.register();
+            } else {
+                setPushEnabled(false);
+                setStatusMessage({ text: 'Push-Berechtigung abgelehnt.', type: 'error' });
+                return;
+            }
         }
 
-        setStatusMessage({ text: 'Fordere Native Push an...', type: '' });
-        const permDetails = await PushNotifications.requestPermissions();
-        if (permDetails.receive === 'granted') {
-            PushNotifications.register();
-        } else {
-            setStatusMessage({ text: 'Push-Berechtigung abgelehnt.', type: 'error' });
+        // Persist immediately to backend
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_BASE}/api/auth/update-profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ pushEnabled: newStatus })
+            });
+            console.log('Setup: pushEnabled persisted to backend:', newStatus);
+        } catch (err) {
+            console.error('Setup: Failed to persist pushEnabled setting', err);
         }
     };
 
