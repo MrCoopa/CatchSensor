@@ -34,9 +34,20 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
             console.log(`NotificationEngine: Throttling offline alert for "${catchSensor.alias || catchSensor.imei}" (${offlineInterval}h interval)`);
             return;
         }
-        if (type === 'ALARM' && isThrottled(catchSensor.lastCatchAlert, catchInterval)) {
-            console.log(`NotificationEngine: Throttling alarm for "${catchSensor.alias || catchSensor.imei}" (${catchInterval}h interval)`);
-            return;
+        if (type === 'ALARM') {
+            const isAcknowledged = catchSensor.alarmAcknowledgedAt &&
+                catchSensor.lastCatchAlert &&
+                new Date(catchSensor.alarmAcknowledgedAt) >= new Date(catchSensor.lastCatchAlert);
+
+            if (isAcknowledged) {
+                console.log(`NotificationEngine: Suppressing alarm for "${catchSensor.alias || catchSensor.imei}" — already acknowledged.`);
+                return;
+            }
+
+            if (isThrottled(catchSensor.lastCatchAlert, catchInterval)) {
+                console.log(`NotificationEngine: Throttling alarm for "${catchSensor.alias || catchSensor.imei}" (${catchInterval}h interval)`);
+                return;
+            }
         }
 
         const sensorName = catchSensor.alias || catchSensor.name || catchSensor.deviceId || catchSensor.imei || 'Unbekannt';

@@ -240,11 +240,9 @@ const updateCatchSensorData = async (deviceId, data, io) => {
         // 1. Update Core Fields
         catchSensor.type = data.type;
 
-        // Clear acknowledgment when a new trigger event deserves a fresh alarm:
-        // Case 1: Status transition (active → triggered) = a new catch event
-        // Case 2: lastCatchAlert is null = sensor was just acknowledged, next trigger means new catch
-        if (data.status === 'triggered' &&
-            (catchSensor.status !== 'triggered' || catchSensor.lastCatchAlert === null)) {
+        // Clear acknowledgment ONLY when a new trigger event arrives (transition from active -> triggered).
+        // This prevents "flapping" or heartbeat messages from clearing the user's acknowledgment.
+        if (data.status === 'triggered' && catchSensor.status === 'active') {
             catchSensor.alarmAcknowledgedAt = null;
         }
 
