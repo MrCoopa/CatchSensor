@@ -52,7 +52,7 @@ const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col justify-center">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                                <SignalIndicator rssi={catchSensor.type === 'LORAWAN' ? catchSensor.lorawanCatchSensor?.loraRssi : catchSensor.rssi} type={catchSensor.type} className="mr-2" /> Signal
+                                <SignalIndicator rssi={catchSensor.type === 'LORAWAN' ? catchSensor.lorawanCatchSensor?.loraRssi : catchSensor.rssi} snr={catchSensor.type === 'LORAWAN' ? catchSensor.lorawanCatchSensor?.snr : undefined} type={catchSensor.type} className="mr-2" /> Signal
                             </div>
                             <div className="flex flex-col">
                                 <div className="text-lg font-bold text-gray-900 leading-none">{catchSensor.type === 'LORAWAN' ? (catchSensor.lorawanCatchSensor?.loraRssi || 0) : (catchSensor.rssi || 0)} dBm</div>
@@ -119,7 +119,7 @@ const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
                                     <div className="flex flex-1 items-center gap-3 overflow-x-auto custom-scrollbar pb-1">
                                         {/* Signal (RSSI) */}
                                         <div className="flex items-center space-x-2 shrink-0">
-                                            <SignalIndicator rssi={reading.rssi} type={catchSensor.type} />
+                                            <SignalIndicator rssi={reading.rssi} snr={reading.snr} type={catchSensor.type} />
                                             <span className="text-[12px] font-black text-gray-500 leading-none">{reading.rssi || 0} dBm</span>
                                         </div>
 

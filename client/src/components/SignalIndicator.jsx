@@ -1,17 +1,25 @@
 import React from 'react';
 
-const SignalIndicator = ({ rssi, type = 'NB-IOT', className = "", barWidth = "w-0.5", barHeight = "h-3" }) => {
+const SignalIndicator = ({ rssi, snr, type = 'NB-IOT', className = "", barWidth = "w-0.5", barHeight = "h-3" }) => {
 
-    const getBars = (r, t) => {
+    const getBars = (r, s, t) => {
         if (!r || r === 0) return 0;
 
         if (t === 'LORAWAN') {
-            // LoRaWAN ranges (dBm)
-            if (r > -80) return 4;   // Excellent / Very strong
-            if (r > -100) return 3;  // Good to moderate
-            if (r > -115) return 2;  // Weak
-            if (r > -120) return 1;  // Very weak
-            return 0;                // Too weak
+            // Combined Logic for LoRaWAN
+            // 4 Bars: Excellent (Strong signal AND high quality)
+            if (r >= -80 && (s === undefined || s >= 5)) return 4;
+
+            // 3 Bars: Good (Acceptable signal AND quality)
+            if (r >= -100 && (s === undefined || s >= 0)) return 3;
+
+            // 2 Bars: Weak (Signal or Quality is low)
+            if (r >= -115 && (s === undefined || s >= -13)) return 2;
+
+            // 1 Bar: Critical (Still connected but borderline)
+            if (r >= -125 && (s === undefined || s >= -20)) return 1;
+
+            return 0; // Out of range
         } else {
             // NB-IoT ranges (absolute values logic)
             const absR = Math.abs(r);
@@ -23,14 +31,14 @@ const SignalIndicator = ({ rssi, type = 'NB-IOT', className = "", barWidth = "w-
         }
     };
 
-    const getColorClass = (b, r, t) => {
+    const getColorClass = (b, r, s, t) => {
         if (b === 0 || !r) return 'bg-gray-200';
 
         if (t === 'LORAWAN') {
-            if (r > -80) return 'bg-green-600';
-            if (r > -100) return 'bg-lime-500';
-            if (r > -115) return 'bg-yellow-500';
-            if (r > -120) return 'bg-orange-500';
+            if (b === 4) return 'bg-green-600';
+            if (b === 3) return 'bg-lime-500';
+            if (b === 2) return 'bg-yellow-500';
+            if (b === 1) return 'bg-orange-500';
             return 'bg-red-500';
         } else {
             const absR = Math.abs(r);
@@ -41,13 +49,17 @@ const SignalIndicator = ({ rssi, type = 'NB-IOT', className = "", barWidth = "w-
         }
     };
 
-    const bars = getBars(rssi, type);
-    const colorClass = getColorClass(bars, rssi, type);
+    const bars = getBars(rssi, snr, type);
+    const colorClass = getColorClass(bars, rssi, snr, type);
+
+    const tooltipText = type === 'LORAWAN'
+        ? `Signal: ${rssi || 'N/A'} dBm, Qualität (SNR): ${snr !== undefined ? snr.toFixed(1) : 'N/A'} dB`
+        : `Signalstärke: ${rssi || 'N/A'} dBm`;
 
     return (
         <div
             className={`flex items-end space-x-0.5 ${barHeight} ${className}`}
-            title={`Signalstärke: ${rssi || 'N/A'} dBm`}
+            title={tooltipText}
         >
             {[1, 2, 3, 4].map((bar) => (
                 <div
