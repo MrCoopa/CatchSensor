@@ -119,7 +119,8 @@ const allowedOrigins = [
     'http://localhost',
     'capacitor://localhost',
     'https://catchsensor.home',
-    'https://192.168.2.183'
+    'http://192.168.2.183:5000',
+    'http://192.168.2.183'
 ];
 
 app.use(cors({
