@@ -118,7 +118,8 @@ const setupEmbeddedBroker = (io) => {
 const allowedOrigins = [
     'http://localhost',
     'capacitor://localhost',
-    'https://catchsensor.home'
+    'https://catchsensor.home',
+    'https://192.168.2.183'
 ];
 
 app.use(cors({
