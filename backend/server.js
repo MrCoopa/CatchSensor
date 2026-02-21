@@ -119,9 +119,11 @@ const allowedOrigins = [
     'http://localhost',
     'capacitor://localhost',
     'https://catchsensor.home',
-    'http://192.168.2.183:5000',
-    'http://192.168.2.183'
-];
+    process.env.VITE_API_URL_IP,
+    process.env.VITE_API_URL_DNS,
+    process.env.APP_BASE_URL_IP,
+    process.env.APP_BASE_URL_DNS
+].filter(Boolean); // Filter out undefined/null if env vars aren't set
 
 app.use(cors({
     origin: function (origin, callback) {
