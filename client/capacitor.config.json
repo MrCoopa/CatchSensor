@@ -12,7 +12,9 @@
         "badge",
         "sound",
         "alert"
-      ]
+      ],
+      "iconColor": "#1b3a2e",
+      "smallIcon": "ic_stat_notification"
     }
   }
 }

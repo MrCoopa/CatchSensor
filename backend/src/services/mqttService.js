@@ -295,11 +295,7 @@ const updateCatchSensorData = async (deviceId, data, io) => {
             spreadingFactor: data.spreadingFactor
         });
 
-        const roomName = `user_${catchSensor.userId}`;
-        io.to(roomName).emit('catchSensorUpdate', catchSensor);
-        console.log(`MQTT: 📢 Emitted update for ${catchSensor.name} (${deviceId}). Status: ${catchSensor.status}, Batt: ${catchSensor.batteryPercent}%`);
-
-
+        // 4. Send Notifications (Wait for these to update timestamps if needed)
         if (catchSensor.userId) {
             const user = await User.findByPk(catchSensor.userId);
             if (user) {
@@ -312,6 +308,11 @@ const updateCatchSensorData = async (deviceId, data, io) => {
                 }
             }
         }
+
+        // 5. Emit Update to Clients (Now contains the new alert timestamps)
+        const roomName = `user_${catchSensor.userId}`;
+        io.to(roomName).emit('catchSensorUpdate', catchSensor);
+        console.log(`MQTT: 📢 Emitted update for ${catchSensor.name} (${deviceId}). Status: ${catchSensor.status}, Batt: ${catchSensor.batteryPercent}%`);
 
     } catch (err) {
         console.error('updateCatchSensorData Error:', err);

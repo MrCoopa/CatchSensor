@@ -57,6 +57,8 @@ const sendNativeNotification = async (token, title, body, data = {}) => {
             notification: {
                 sound: 'default',
                 channelId: 'catch-channel', // Must match channel created in App
+                icon: 'ic_stat_notification',
+                color: '#1b3a2e',
                 priority: 'max',
                 defaultSound: true
             }

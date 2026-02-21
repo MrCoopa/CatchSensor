@@ -65,8 +65,8 @@ exports.testNotification = async (req, res) => {
                 console.log(`Test Notification: Sending Native FCM to ${sub.endpoint.substring(0, 15)}...`);
                 await sendNativeNotification(
                     sub.endpoint,
-                    '🧪 Test-Push (Native)',
-                    'Diese Nachricht bestätigt, dass Native Push-Benachrichtigungen funktionieren. 🦊',
+                    'CatchSensor: Test-Push',
+                    'Diese Nachricht bestätigt, dass die Benachrichtigungen auf diesem Gerät korrekt konfiguriert sind. 🦊',
                     { type: 'TEST', url: '/setup' }
                 );
                 sentCount++;

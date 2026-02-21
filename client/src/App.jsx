@@ -17,13 +17,27 @@ function App() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // 1. Initial permission check & registration
     const initPush = async () => {
+      // 1. Create Channel (Required for Android 8+)
+      try {
+        await PushNotifications.createChannel({
+          id: 'catch-channel',
+          name: 'CatchSensor Alarme',
+          description: 'Kanal für Fangmeldungen und Status-Updates',
+          importance: 5, // High/Max importance
+          visibility: 1, // Public
+          vibration: true
+        });
+        console.log('App: Push channel "catch-channel" created/verified.');
+      } catch (e) {
+        console.error('App: Failed to create push channel', e);
+      }
+
+      // 2. Initial permission check & registration
       const result = await PushNotifications.checkPermissions();
       if (result.receive === 'granted') {
         PushNotifications.register();
       } else if (result.receive === 'prompt' || result.receive === 'default') {
-        // Automatically request if not yet decided
         const requestResult = await PushNotifications.requestPermissions();
         if (requestResult.receive === 'granted') {
           PushNotifications.register();
@@ -32,25 +46,11 @@ function App() {
     };
     initPush();
 
-    // 2. Listeners
+    // 3. Listeners
     const registrationListener = PushNotifications.addListener('registration', async (token) => {
       console.log('App: Push registration success, token: ' + token.value);
-      const authToken = localStorage.getItem('token');
-      if (authToken) {
-        try {
-          await fetch(`${API_BASE}/api/notifications/subscribe`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ endpoint: token.value, keys: null })
-          });
-          console.log('App: Push token synced with backend.');
-        } catch (e) {
-          console.error('App: Failed to sync push token', e);
-        }
-      }
+      localStorage.setItem('fcm_token', token.value);
+      syncPushToken(token.value);
     });
 
     const errorListener = PushNotifications.addListener('registrationError', (error) => {
@@ -59,7 +59,6 @@ function App() {
 
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log('App: Push received: ' + JSON.stringify(notification));
-      // You could trigger a global toast or alert here if desired
     });
 
     return () => {
@@ -68,6 +67,34 @@ function App() {
       notificationListener.remove();
     };
   }, []);
+
+  // Helper to sync token when user is available
+  const syncPushToken = async (tokenValue) => {
+    const activeToken = tokenValue || localStorage.getItem('fcm_token');
+    const authToken = localStorage.getItem('token');
+    if (activeToken && authToken) {
+      try {
+        await fetch(`${API_BASE}/api/notifications/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ endpoint: activeToken, keys: null })
+        });
+        console.log('App: Push token synced with backend.');
+      } catch (e) {
+        console.error('App: Failed to sync push token', e);
+      }
+    }
+  };
+
+  // Re-sync when user/token changes
+  useEffect(() => {
+    if (user && user.token) {
+      syncPushToken();
+    }
+  }, [user]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');

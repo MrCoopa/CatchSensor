@@ -58,21 +58,21 @@ const sendUnifiedNotification = async (user, catchSensor, type, customMessage = 
         let messageText = customMessage;
 
         if (type === 'ALARM') {
-            notificationTitle = `🚨 FANG-GEMELDET: ${sensorName}!`;
-            if (!messageText) messageText = `${sensorName} hat ausgelöst!`;
+            notificationTitle = `FANG - ${sensorName}`;
+            if (!messageText) messageText = `${sensorName} hat ausgelöst. Bitte kontrollieren.`;
         } else if (type === 'LOW_BATTERY') {
             const voltStr = catchSensor.batteryVoltage ? ` (${(catchSensor.batteryVoltage / 1000).toFixed(2)}V)` : '';
-            notificationTitle = `⚠️ Batterie von ${sensorName} niedrig (${catchSensor.batteryPercent || 0}%)`;
+            notificationTitle = `CatchSensor: Batterie-Warnung`;
             if (!messageText) messageText = `Batterie bei "${sensorName}" niedrig.${voltStr} (${catchSensor.batteryPercent || 0}%)`;
         } else if (type === 'CONNECTION_LOST') {
             const diffHours = Math.round((Date.now() - new Date(catchSensor.lastSeen).getTime()) / 3600000);
-            notificationTitle = `📡 ${sensorName} ist offline seit ${diffHours}h`;
+            notificationTitle = `CatchSensor: Verbindung verloren`;
             if (!messageText) messageText = `${sensorName} hat seit ${diffHours} Stunden keinen Status gesendet.`;
         } else if (type === 'TEST') {
-            notificationTitle = '🧪 Test-Modus';
+            notificationTitle = 'CatchSensor: Test-Push';
             if (!messageText) messageText = 'Test-Benachrichtigung erfolgreich empfangen.';
         } else {
-            notificationTitle = '⚠️ System-Info';
+            notificationTitle = 'CatchSensor: Info';
             if (!messageText) messageText = `Status-Update für "${sensorName}".`;
         }
 
