@@ -469,8 +469,9 @@ async function startServer() {
             console.log('--- Server Status ---');
             console.log(`Server: Running on port ${PORT}`);
             console.log(`Mode: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`VITE_API_URL: ${process.env.VITE_API_URL || 'Not Set'}`);
-            console.log(`APP_BASE_URL: ${process.env.APP_BASE_URL || 'Not Set'}`);
+            console.log(`Connectivity Mode: ${process.env.VITE_CONNECTIVITY_MODE || 'Default (IP)'}`);
+            console.log(`API URL (IP): ${process.env.VITE_API_URL_IP || 'Not Set'}`);
+            console.log(`API URL (DNS): ${process.env.VITE_API_URL_DNS || 'Not Set'}`);
             console.log('-----------------------');
 
             // Start Background Services AFTER server is ready and DB is synced
