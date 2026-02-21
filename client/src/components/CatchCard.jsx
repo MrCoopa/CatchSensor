@@ -113,8 +113,8 @@ const CatchCard = ({ catchSensor, onViewHistory, isShared, onAcknowledge }) => {
                     <div className="flex items-center space-x-2">
                         <BatteryIndicator percentage={catchSensor.batteryPercent || 0} />
                         <div className="text-sm font-medium">
-                            <p className="leading-none">{((voltage || 0) / 1000).toFixed(1).replace('.', ',')} V</p>
-                            <p className="text-[10px] text-gray-400 leading-none mt-0.5">{catchSensor.batteryPercent || 0}%</p>
+                            <p className="leading-none">{catchSensor.batteryPercent || 0}%</p>
+                            <p className="text-[10px] text-gray-400 leading-none mt-0.5">{((voltage || 0) / 1000).toFixed(2).replace('.', ',')} V</p>
                         </div>
                     </div>
 

@@ -48,7 +48,8 @@ const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
                                 <BatteryIndicator percentage={catchSensor.batteryPercent || 0} className="mr-2" /> Batterie
                             </div>
-                            <div className="text-lg font-bold text-gray-900">{((catchSensor.batteryVoltage || 0) / 1000).toFixed(1).replace('.', ',')} V</div>
+                            <div className="text-lg font-bold text-gray-900">{catchSensor.batteryPercent || 0}%</div>
+                            <div className="text-[10px] text-gray-400 font-medium">{((catchSensor.batteryVoltage || 0) / 1000).toFixed(2).replace('.', ',')} V</div>
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col justify-center">
                             <div className="flex items-center text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
@@ -111,7 +112,7 @@ const CatchDetailsModal = ({ catchSensor, isOpen, onClose }) => {
                                         <BatteryIndicator percentage={reading.batteryPercent || 0} />
                                         <div className="flex flex-col">
                                             <span className="text-[12px] font-black text-gray-700 leading-none">{reading.batteryPercent || 0}%</span>
-                                            <span className="text-[10px] text-gray-400 font-medium">{((reading.value || 0) / 1000).toFixed(1).replace('.', ',')} V</span>
+                                            <span className="text-[10px] text-gray-400 font-medium">{((reading.value || 0) / 1000).toFixed(2).replace('.', ',')} V</span>
                                         </div>
                                     </div>
 
