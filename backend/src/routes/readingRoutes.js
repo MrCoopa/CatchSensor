@@ -55,7 +55,7 @@ router.post('/', async (req, res) => {
 
         // Broadcast update via socket.io
         const updatedCatch = await CatchSensor.findByPk(catchSensorId);
-        req.io.emit('CatchSensorUpdate', updatedCatch);
+        req.io.emit('catchSensorUpdate', updatedCatch);
 
         res.status(201).json(newReading);
     } catch (error) {

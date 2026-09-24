@@ -3,7 +3,7 @@ const CatchSensor = require('../models/CatchSensor');
 const User = require('../models/User');
 const LoraMetadata = require('../models/LoraMetadata');
 const { Op } = require('sequelize');
-const { sendUnifiedNotification } = require('./notificationService');
+const { sendUnifiedNotification, notifySensorUsers } = require('./notificationService');
 
 /**
  * Watchdog Service
@@ -77,17 +77,8 @@ const setupWatchdog = (io) => {
                     if (isAcknowledged) {
                         console.log(`Watchdog: ✅ Alarm acknowledged for "${sensorLabel}" — skipping re-alert`);
                     } else {
-                        const lastAlert = sensor.lastCatchAlert;
-                        const sinceAlert = lastAlert ? (Date.now() - new Date(lastAlert).getTime()) / 3600000 : Infinity;
-                        if (sinceAlert >= catchInterval) {
-                            console.log(`Watchdog: 🚨 Re-alerting TRIGGERED sensor "${sensorLabel}" (${sinceAlert.toFixed(1)}h since last alert)`);
-                            for (const uId of authorizedUserIds) {
-                                const user = userMap[uId];
-                                if (user) {
-                                    await sendUnifiedNotification(user, sensor, 'ALARM');
-                                }
-                            }
-                        }
+                        const targetUsers = authorizedUserIds.map(uId => userMap[uId]).filter(Boolean);
+                        await notifySensorUsers(targetUsers, sensor, 'ALARM');
                     }
                 }
 
@@ -108,33 +99,19 @@ const setupWatchdog = (io) => {
                             });
                         }
 
-                        // sendUnifiedNotification handles its own throttle via lastOfflineAlert
-                        for (const uId of authorizedUserIds) {
-                            const user = userMap[uId];
-                            if (user) {
-                                await sendUnifiedNotification(user, sensor, 'CONNECTION_LOST');
-                            }
-                        }
+                        // notifySensorUsers handles its own throttle via lastOfflineAlert
+                        const targetUsers = authorizedUserIds.map(uId => userMap[uId]).filter(Boolean);
+                        await notifySensorUsers(targetUsers, sensor, 'CONNECTION_LOST');
                     }
                 }
 
                 // ── 3. LOW_BATTERY: repeat alert while battery stays below threshold ──
-                if (sensor.batteryPercent !== null) {
-                    const lastAlert = sensor.lastBatteryAlert;
-                    const sinceAlert = lastAlert ? (Date.now() - new Date(lastAlert).getTime()) / 3600000 : Infinity;
-                    if (sinceAlert >= batteryInterval) {
-                        for (const uId of authorizedUserIds) {
-                            const user = userMap[uId];
-                            if (user) {
-                                const threshold = user.batteryThreshold || 20;
-                                if (sensor.batteryPercent < threshold) {
-                                    console.log(`Watchdog: 🪫 Re-alerting LOW BATTERY sensor "${sensorLabel}" for User ${user.email} (${sensor.batteryPercent}% < ${threshold}%)`);
-                                    await sendUnifiedNotification(user, sensor, 'LOW_BATTERY');
-                                }
-                            }
-                        }
+                    const lowBattUsers = authorizedUserIds
+                        .map(uId => userMap[uId])
+                        .filter(u => u && sensor.batteryPercent < (u.batteryThreshold || 20));
+                    if (lowBattUsers.length > 0) {
+                        await notifySensorUsers(lowBattUsers, sensor, 'LOW_BATTERY');
                     }
-                }
             }
         } catch (err) {
             console.error('Watchdog Error:', err);

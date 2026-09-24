@@ -4,6 +4,8 @@
 // ── User Settings ───────────────────────────────────────────────────────────
 #define MQTT_HOST       "192.168.1.100"    // IP deines Backends
 #define MQTT_PORT       1884
+#define MQTT_USER       "MQTTUserCatchsensor"
+#define MQTT_PASS       "X5Q!XsY&wys!~>Vn3<RiQ/aT$3t_X7uA"
 
 // ── Security Settings ───────────────────────────────────────────────────────
 #define USE_AES         1                  // Setze auf 1 zum Aktivieren

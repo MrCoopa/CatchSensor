@@ -7,7 +7,7 @@ const User = require('../models/User');
 const CatchShare = require('../models/CatchShare');
 const PushSubscription = require('../models/PushSubscription');
 const LoraMetadata = require('../models/LoraMetadata');
-const { sendUnifiedNotification } = require('./notificationService');
+const { sendUnifiedNotification, notifySensorUsers } = require('./notificationService');
 
 /** Convert battery voltage (mV) to percentage. Range: 3300mV (0%) → 4200mV (100%) */
 const voltageToBatteryPercent = (mV) => Math.min(100, Math.max(0, Math.floor((mV - 3300) / 9)));
@@ -199,35 +199,34 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
             deviceId = topic.split('/')[1];
             const payloadHex = payload.toString().toUpperCase();
 
-            // DDoS/Flooding Protection: Track repetitions within 24h
+            // DDoS/Flooding Protection: Track rapid repetitions
             const cacheEntry = lastPayloads.get(deviceId);
             const now = Date.now();
 
             if (cacheEntry && cacheEntry.payloadHex === payloadHex) {
                 cacheEntry.count++;
+                const timeSinceLast = now - (cacheEntry.lastSeenAt || now);
+                cacheEntry.lastSeenAt = now;
 
-                // Start the 24h window only at the first REPETITION (i.e. second identical packet)
-                if (cacheEntry.count === 2) {
-                    cacheEntry.firstRepetitionAt = now;
+                // Only drop as DDoS if rapid bursts arrive (< 60s)
+                if (timeSinceLast < 60 * 1000) {
+                    if (cacheEntry.count > 3) {
+                        console.error(`MQTT: ⚠️ KRITISCH: Melder ${deviceId} wird geflutet! Identisches Paket ${cacheEntry.count}x empfangen.`);
+                    } else {
+                        console.warn(`MQTT: 🛡️ DDoS protection for ${deviceId}. Rejected rapid identical payload.`);
+                    }
+                    return;
                 }
-
-                const timeDiff = cacheEntry.firstRepetitionAt ? (now - cacheEntry.firstRepetitionAt) : 0;
-
-                // If more than 3 identical packets (1 original + 3 reps) within 24 hours of the first rep
-                if (cacheEntry.count > 3 && timeDiff < 24 * 60 * 60 * 1000) {
-                    console.error(`MQTT: ⚠️ KRITISCH: Melder ${deviceId} wird geflutet! Identisches Paket bereits ${cacheEntry.count}x innerhalb von 24h empfangen.`);
-                } else {
-                    console.warn(`MQTT: 🛡️ DDoS protection for ${deviceId}. Rejected identical payload.`);
-                }
-                return;
+                // Periodic keep-alive with identical payload (e.g. >= 60s apart): allow through to refresh status
+                console.log(`MQTT: 🔄 Periodic keep-alive with unchanged payload for ${deviceId} (${Math.round(timeSinceLast / 1000)}s since last).`);
+            } else {
+                // New or different payload: Reset cache entry
+                lastPayloads.set(deviceId, {
+                    payloadHex,
+                    count: 1,
+                    lastSeenAt: now
+                });
             }
-
-            // New or different payload: Reset cache entry
-            lastPayloads.set(deviceId, {
-                payloadHex,
-                count: 1,
-                firstRepetitionAt: null
-            });
 
             let dataBuffer = payload;
             const MASTER_SALT = process.env.MASTER_SALT || '';
@@ -279,8 +278,8 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
                     console.error(`MQTT: ❌ AES Decryption failed for ${realImei}:`, decErr.message);
                     return; // Fail if decryption is attempted but fails
                 }
-            } else if (payload.length === 8) {
-                // Handle unencrypted 8-char hex string (4 bytes)
+            } else if (payload.length === 8 || payload.length === 12) {
+                // Handle unencrypted 8-char or 12-char hex string (4 or 6 bytes)
                 if (keyBuffer) {
                     console.error(`MQTT: ❌ Security violation: Received unencrypted payload for encrypted device ${realImei}`);
                     return; // Reject unencrypted payload for encrypted device
@@ -572,16 +571,14 @@ const updateCatchSensorData = async (deviceIdOrSensor, data, io) => {
             }
         });
 
-        for (const uId of userIds) {
-            const user = await User.findByPk(uId);
-            if (user) {
-                const threshold = user.batteryThreshold || 20;
+        const users = await User.findAll({ where: { id: { [Op.in]: userIds } } });
 
-                if (catchSensor.status === 'triggered') {
-                    await sendUnifiedNotification(user, catchSensor, 'ALARM');
-                } else if (catchSensor.batteryPercent !== null && catchSensor.batteryPercent < threshold) {
-                    await sendUnifiedNotification(user, catchSensor, 'LOW_BATTERY');
-                }
+        if (catchSensor.status === 'triggered') {
+            await notifySensorUsers(users, catchSensor, 'ALARM');
+        } else if (catchSensor.batteryPercent !== null) {
+            const lowBattUsers = users.filter(u => catchSensor.batteryPercent < (u.batteryThreshold || 20));
+            if (lowBattUsers.length > 0) {
+                await notifySensorUsers(lowBattUsers, catchSensor, 'LOW_BATTERY');
             }
         }
 

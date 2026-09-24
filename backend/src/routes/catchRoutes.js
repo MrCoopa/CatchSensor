@@ -80,6 +80,7 @@ router.post('/', async (req, res) => {
             revierweltWebhookUrl,
             imei: type === 'NB-IOT' ? identifier : null,
             deviceId: type === 'LORAWAN' ? identifier : null,
+            claimingPin: type === 'NB-IOT' ? claimingPin : null,
             type,
             userId: req.user.id
         });
@@ -215,13 +216,19 @@ router.post('/:id/acknowledge', async (req, res) => {
             alarmAcknowledgedAt: new Date(),
         });
 
-        // Push the updated sensor state to the client immediately via Socket.IO,
-        // so the UI shows 'Quittiert' even if the simulator keeps sending trigger packets.
-        if (catchSensor.userId) {
+        // Push the updated sensor state to all authorized clients (owner + co-hunters) via Socket.IO
+        if (req.io) {
             const updatedSensor = await CatchSensor.findByPk(catchSensor.id, {
                 include: [{ model: LoraMetadata, as: 'lorawanCatchSensor' }]
             });
-            req.io.to(`user_${catchSensor.userId}`).emit('catchSensorUpdate', updatedSensor);
+            const recipientIds = [catchSensor.userId].filter(Boolean);
+            const shares = await CatchShare.findAll({ where: { catchSensorId: catchSensor.id } });
+            shares.forEach(s => {
+                if (!recipientIds.includes(s.userId)) recipientIds.push(s.userId);
+            });
+            recipientIds.forEach(uId => {
+                req.io.to(`user_${uId}`).emit('catchSensorUpdate', updatedSensor);
+            });
         }
 
         res.json({ message: 'Alarm quittiert. Nächster Alarm wird sofort gemeldet.' });
@@ -250,11 +257,18 @@ router.post('/:id/resync', async (req, res) => {
             resyncRequired: false
         });
 
-        if (catchSensor.userId) {
+        if (req.io) {
             const updatedSensor = await CatchSensor.findByPk(catchSensor.id, {
                 include: [{ model: LoraMetadata, as: 'lorawanCatchSensor' }]
             });
-            req.io.to(`user_${catchSensor.userId}`).emit('catchSensorUpdate', updatedSensor);
+            const recipientIds = [catchSensor.userId].filter(Boolean);
+            const shares = await CatchShare.findAll({ where: { catchSensorId: catchSensor.id } });
+            shares.forEach(s => {
+                if (!recipientIds.includes(s.userId)) recipientIds.push(s.userId);
+            });
+            recipientIds.forEach(uId => {
+                req.io.to(`user_${uId}`).emit('catchSensorUpdate', updatedSensor);
+            });
         }
 
         res.json({ message: 'Zähler erfolgreich zurückgesetzt. Gerät ist wieder einsatzbereit.' });

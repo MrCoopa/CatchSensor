@@ -108,17 +108,22 @@ uint8_t sim7020_getRSRP() {
     return 60;
 }
 
-bool sim7020_mqttConnect(const char* host, int port) {
-    char buf[128];
+bool sim7020_mqttConnect(const char* host, int port, const char* clientId, const char* username, const char* password) {
+    char buf[256];
     // Start MQTT service
     sendATCommand("AT+CMQNEW?", "OK");
     
     // Create connection (MQTT, client id)
-    sprintf(buf, "AT+CMQNEW=\"%s\",\"%d\",12000,1024", host, port);
+    snprintf(buf, sizeof(buf), "AT+CMQNEW=\"%s\",\"%d\",12000,1024", host, port);
     if (!sendATCommand(buf, "+CMQNEW: 0")) return false;
 
-    // Connect (id, version, keepalive, cleansess, will)
-    if (!sendATCommand("AT+CMQCON=0,3,\"CatchSensorSTM32\",600,1,0", "OK")) return false;
+    // Connect (id, version, client_id, keepalive, cleansess, will_flag[, username, password])
+    if (username && strlen(username) > 0 && password && strlen(password) > 0) {
+        snprintf(buf, sizeof(buf), "AT+CMQCON=0,3,\"%s\",600,1,0,\"%s\",\"%s\"", clientId, username, password);
+    } else {
+        snprintf(buf, sizeof(buf), "AT+CMQCON=0,3,\"%s\",600,1,0", clientId);
+    }
+    if (!sendATCommand(buf, "OK")) return false;
     
     return true;
 }

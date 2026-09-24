@@ -225,7 +225,7 @@ void loop() {
                 
                 for (int i = 0; i < 32; i++) sprintf(&payloadHex[i * 2], "%02X", handshakePayload[i]);
                 
-                if (connected && sim7020_mqttConnect(MQTT_HOST, MQTT_PORT)) {
+                if (connected && sim7020_mqttConnect(MQTT_HOST, MQTT_PORT, imei.c_str(), MQTT_USER, MQTT_PASS)) {
                     sim7020_mqttPublish(("catches/" + imei + "/provision").c_str(), payloadHex, 64);
                     saveIndividualKey(newKey); // Adjust this to save 32 bytes
                     saveProvisionedFlag(1);
@@ -323,7 +323,7 @@ void loop() {
 #endif
             String topic = "catches/" + deviceId + "/data";
 
-            if (sim7020_mqttConnect(MQTT_HOST, MQTT_PORT)) {
+            if (sim7020_mqttConnect(MQTT_HOST, MQTT_PORT, imei.c_str(), MQTT_USER, MQTT_PASS)) {
                 sim7020_mqttPublish(topic.c_str(), payloadHex, payloadLen);
                 sim7020_mqttDisconnect();
             }
