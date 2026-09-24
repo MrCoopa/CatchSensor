@@ -71,3 +71,78 @@ void aes256_encrypt(uint8_t* state, const uint8_t* key) {
     t = state[15]; state[15] = state[11]; state[11] = state[7]; state[7] = state[3]; state[3] = t;
     for (int i = 0; i < 16; i++) state[i] ^= round_key[224 + i];
 }
+
+static void gf_mult(const uint8_t x[16], const uint8_t y[16], uint8_t out[16]) {
+    uint8_t z[16] = {0};
+    uint8_t v[16];
+    memcpy(v, y, 16);
+
+    for (int i = 0; i < 16; i++) {
+        for (int bit = 7; bit >= 0; bit--) {
+            if ((x[i] >> bit) & 1) {
+                for (int j = 0; j < 16; j++) z[j] ^= v[j];
+            }
+            uint8_t lsb = v[15] & 1;
+            for (int j = 15; j > 0; j--) {
+                v[j] = (v[j] >> 1) | ((v[j - 1] & 1) << 7);
+            }
+            v[0] = v[0] >> 1;
+            if (lsb) {
+                v[0] ^= 0xe1;
+            }
+        }
+    }
+    memcpy(out, z, 16);
+}
+
+void aes256_gcm_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, const uint8_t* iv, uint8_t* ciphertext_out, uint8_t* tag_out) {
+    // 1. Hash Subkey H = AES_K(0^16)
+    uint8_t H[16] = {0};
+    aes256_encrypt(H, key);
+
+    // 2. Initial Counter J0 = IV || 0x00000001 (for 12-byte IV)
+    uint8_t J0[16];
+    memcpy(J0, iv, 12);
+    J0[12] = 0; J0[13] = 0; J0[14] = 0; J0[15] = 1;
+
+    // 3. Counter 1 for encrypting data block: J1 = IV || 0x00000002
+    uint8_t J1[16];
+    memcpy(J1, iv, 12);
+    J1[12] = 0; J1[13] = 0; J1[14] = 0; J1[15] = 2;
+
+    uint8_t stream[16];
+    memcpy(stream, J1, 16);
+    aes256_encrypt(stream, key);
+
+    for (size_t i = 0; i < len && i < 16; i++) {
+        ciphertext_out[i] = plaintext[i] ^ stream[i];
+    }
+
+    // 4. GHASH over Ciphertext and Lengths (AAD = 0)
+    uint8_t C_pad[16] = {0};
+    memcpy(C_pad, ciphertext_out, len < 16 ? len : 16);
+
+    uint8_t S[16];
+    gf_mult(C_pad, H, S);
+
+    // Block 2: len(A) [8 bytes] || len(C) in bits [8 bytes]
+    uint8_t lenBlock[16] = {0};
+    uint64_t bitLen = (uint64_t)len * 8;
+    for (int i = 0; i < 8; i++) {
+        lenBlock[15 - i] = (bitLen >> (i * 8)) & 0xFF;
+    }
+
+    for (int i = 0; i < 16; i++) S[i] ^= lenBlock[i];
+    uint8_t S_final[16];
+    gf_mult(S, H, S_final);
+
+    // 5. Compute Tag = S_final ^ AES_K(J0)
+    uint8_t tagMask[16];
+    memcpy(tagMask, J0, 16);
+    aes256_encrypt(tagMask, key);
+
+    for (int i = 0; i < 16; i++) {
+        tag_out[i] = S_final[i] ^ tagMask[i];
+    }
+}
+

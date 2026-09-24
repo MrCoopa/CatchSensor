@@ -200,7 +200,7 @@ void loop() {
         }
 
         // 4. Encrypt Payload if enabled
-        char payloadHex[65]; // Support up to 64 hex chars (32 bytes)
+        char payloadHex[96]; // Support up to 88 hex chars (44 bytes for AES-256-GCM)
         int payloadLen = 8; 
 
         if (USE_AES) {
@@ -290,17 +290,27 @@ void loop() {
             block[12] = (timestamp >> 8) & 0xFF;
             block[13] = timestamp & 0xFF;
 
-            // Use aes128 or aes256 based on key size
-            if (provisioned) {
-                aes256_encrypt(block, activeKey);
-            } else {
-                aes256_encrypt(block, activeKey);
+            // Prepare 12-byte IV for GCM: 4 bytes counter + 8 pseudo-random bytes
+            uint8_t iv[12] = {0};
+            iv[0] = (counter >> 24) & 0xFF;
+            iv[1] = (counter >> 16) & 0xFF;
+            iv[2] = (counter >> 8) & 0xFF;
+            iv[3] = counter & 0xFF;
+            for (int i = 4; i < 12; i++) {
+                iv[i] = (uint8_t)((timestamp ^ (voltageMv << 4) ^ (analogRead(PIN_ADC_BATT) << i)) & 0xFF);
             }
-            
-            for (int i = 0; i < 16; i++) {
-                sprintf(&payloadHex[i * 2], "%02X", block[i]);
-            }
-            payloadLen = 32;
+
+            uint8_t ciphertext[16] = {0};
+            uint8_t tag[16] = {0};
+
+            aes256_gcm_encrypt(block, 16, activeKey, iv, ciphertext, tag);
+
+            // Assemble full packet: IV (12B) + Ciphertext (16B) + Tag (16B) = 44 bytes = 88 hex chars
+            for (int i = 0; i < 12; i++) sprintf(&payloadHex[i * 2], "%02X", iv[i]);
+            for (int i = 0; i < 16; i++) sprintf(&payloadHex[24 + i * 2], "%02X", ciphertext[i]);
+            for (int i = 0; i < 16; i++) sprintf(&payloadHex[56 + i * 2], "%02X", tag[i]);
+            payloadHex[88] = '\0';
+            payloadLen = 88;
         } else {
             sprintf(payloadHex, "%02X%04X%02X%02X%02X", status, voltageMv, rsrpAbs, rsrqAbs, (uint8_t)sinrSigned);
             payloadLen = 12;

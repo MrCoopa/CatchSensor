@@ -267,16 +267,39 @@ const handleMQTTMessage = async (topic, payload, io, pathType) => {
                 keyBuffer = Buffer.from(globalKey);
             }
 
-            if (payload.length === 32 && keyBuffer) {
+            if (payload.length === 88 && keyBuffer) {
+                // AES-256-GCM (Authenticated Encryption with Associated Data)
+                // Format: IV (12B / 24 Hex) + Ciphertext (16B / 32 Hex) + Tag (16B / 32 Hex)
+                try {
+                    const rawBuffer = Buffer.from(payload.toString(), 'hex');
+                    if (rawBuffer.length === 44) {
+                        const iv = rawBuffer.subarray(0, 12);
+                        const ciphertext = rawBuffer.subarray(12, 28);
+                        const tag = rawBuffer.subarray(28, 44);
+
+                        const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
+                        decipher.setAuthTag(tag);
+                        dataBuffer = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+                        console.log(`MQTT: 🔐 Authenticated & Decrypted AES-256-GCM payload for ${realImei}`);
+                    } else {
+                        console.error(`MQTT: ❌ Invalid GCM binary buffer length (${rawBuffer.length}) for ${realImei}`);
+                        return;
+                    }
+                } catch (gcmErr) {
+                    console.error(`MQTT: ❌ AES-256-GCM Auth/Decryption failed (TAMPERING DETECTED) for ${realImei}:`, gcmErr.message);
+                    return; // Fail if tag validation fails (message was tampered with or corrupted)
+                }
+            } else if (payload.length === 32 && keyBuffer) {
+                // Fallback: Legacy AES-256-ECB
                 try {
                     const decrypted = Buffer.from(payload.toString(), 'hex');
                     const decipher = crypto.createDecipheriv('aes-256-ecb', keyBuffer, null);
                     decipher.setAutoPadding(false);
                     dataBuffer = Buffer.concat([decipher.update(decrypted), decipher.final()]);
-                    console.log(`MQTT: 🔐 Decrypted AES-256 payload for ${realImei} using ${derivedKey ? 'DERIVED' : (catchSensor?.isProvisioned ? 'INDIVIDUAL' : 'GLOBAL')} key`);
+                    console.log(`MQTT: 🔐 Decrypted Legacy AES-256-ECB payload for ${realImei}`);
                 } catch (decErr) {
-                    console.error(`MQTT: ❌ AES Decryption failed for ${realImei}:`, decErr.message);
-                    return; // Fail if decryption is attempted but fails
+                    console.error(`MQTT: ❌ AES-ECB Decryption failed for ${realImei}:`, decErr.message);
+                    return;
                 }
             } else if (payload.length === 8 || payload.length === 12) {
                 // Handle unencrypted 8-char or 12-char hex string (4 or 6 bytes)
